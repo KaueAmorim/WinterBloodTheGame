@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include "config.h"
 #include "bullet.h"
-
+#include "controls.h"
 
 typedef enum { PARADO, CORRENDO, ATIRANDO, PULANDO, AGACHADO, AGACHADO_ATIRANDO } EstadoJogador;
 
@@ -34,7 +34,7 @@ typedef struct {
     // Timer para controlar a duração da animação de tiro
     float tempo_estado_tiro;
 
-    bool tecla_cima, tecla_esquerda, tecla_direita, tecla_tiro, tecla_baixo;
+    Controls *controles;
     float cooldown_tiro;
     bool no_chao;
 
@@ -50,7 +50,6 @@ Player* player_create(float x, float y);
 void player_destroy(Player *p);
 void player_update(Player *p);
 void player_draw(Player *p, float camera_x, float camera_y);
-void player_handle_input(Player *p, ALLEGRO_EVENT *evento);
 void player_fire(Player *p, struct Bullet bullets[], int max_bullets);
 
 #endif

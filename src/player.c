@@ -14,6 +14,12 @@ Player* player_create(float x, float y) {
     p->no_chao = true;
     p->hp = 5;
 
+    p->controles = controls_create();
+    if (!p->controles) {
+        player_destroy(p);
+        return NULL;
+    }
+
     // Usa as constantes do config.h para configurar os frames
     p->num_frames_parado = NUM_FRAMES_PARADO;
     p->num_frames_correndo = NUM_FRAMES_CORRENDO;
@@ -36,11 +42,13 @@ Player* player_create(float x, float y) {
         player_destroy(p);
         return NULL;
     }
+
     return p;
 }
 
 void player_destroy(Player *p) {
     if (p) {
+        controls_destroy(p->controles);
         al_destroy_bitmap(p->folha_sprite_parado);
         al_destroy_bitmap(p->folha_sprite_correndo);
         al_destroy_bitmap(p->folha_sprite_atirando);
@@ -48,27 +56,6 @@ void player_destroy(Player *p) {
         al_destroy_bitmap(p->folha_sprite_agachado);
         al_destroy_bitmap(p->folha_sprite_agachado_atirando);
         free(p);
-    }
-}
-
-void player_handle_input(Player *p, ALLEGRO_EVENT *evento) {
-    if (evento->type == ALLEGRO_EVENT_KEY_DOWN) {
-        switch (evento->keyboard.keycode) {
-            case ALLEGRO_KEY_UP:    p->tecla_cima = true; break;
-            case ALLEGRO_KEY_LEFT:  p->tecla_esquerda = true; break;
-            case ALLEGRO_KEY_RIGHT: p->tecla_direita = true; break;
-            case ALLEGRO_KEY_SPACE: p->tecla_tiro = true; break;
-            case ALLEGRO_KEY_DOWN:  p->tecla_baixo = true; break;
-        }
-    } 
-    else if (evento->type == ALLEGRO_EVENT_KEY_UP) {
-        switch (evento->keyboard.keycode) {
-            case ALLEGRO_KEY_UP:    p->tecla_cima = false; break;
-            case ALLEGRO_KEY_LEFT:  p->tecla_esquerda = false; break;
-            case ALLEGRO_KEY_RIGHT: p->tecla_direita = false; break;
-            case ALLEGRO_KEY_SPACE: p->tecla_tiro = false; break;
-            case ALLEGRO_KEY_DOWN:  p->tecla_baixo = false; break;
-        }
     }
 }
 
@@ -80,7 +67,7 @@ void player_update(Player *p) {
         p->tempo_estado_tiro -= 1.0 / 60.0;
         if (p->tempo_estado_tiro <= 0) {
             // Quando o tiro acaba, se a tecla baixo AINDA estiver pressionada, volta para agachado
-            if (p->tecla_baixo) {
+            if (p->controles->baixo) {
                  p->estado = AGACHADO;
             } else { // Senão, volta para parado
                  p->estado = PARADO;
@@ -90,16 +77,16 @@ void player_update(Player *p) {
     else if (!p->no_chao) {
         p->estado = PULANDO;
     }
-    else if (p->tecla_baixo) { 
+    else if (p->controles->baixo) {
         p->estado = AGACHADO;
         p->vel_x = 0; // Impede o jogador de se mover enquanto está agachado
     }
-    else { 
-        if (p->tecla_esquerda) {
+    else {
+        if (p->controles->esquerda) {
             p->vel_x = -VELOCIDADE_JOGADOR;
             p->direcao = -1;
             p->estado = CORRENDO;
-        } else if (p->tecla_direita) {
+        } else if (p->controles->direita) {
             p->vel_x = VELOCIDADE_JOGADOR;
             p->direcao = 1;
             p->estado = CORRENDO;
@@ -109,7 +96,7 @@ void player_update(Player *p) {
         }
     }
 
-    if (p->tecla_cima && p->no_chao) {
+    if (p->controles->cima && p->no_chao) {
         p->vel_y = FORCA_PULO;
         p->no_chao = false;
     }
@@ -203,7 +190,7 @@ void player_draw(Player *p, float camera_x, float camera_y) {
 }
 
 void player_fire(Player *p, Bullet bullets[], int max_bullets) {
-    if (p->tecla_tiro && p->cooldown_tiro <= 0) {
+    if (p->controles->tiro && p->cooldown_tiro <= 0) {
         for (int i = 0; i < max_bullets; i++) {
             if (!bullets[i].ativo) {
                 

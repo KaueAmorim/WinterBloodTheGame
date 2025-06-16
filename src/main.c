@@ -23,30 +23,22 @@ bool check_collision(float r1x, float r1y, float r1w, float r1h, float r2x, floa
 }
 
 // --- NOVA FUNÇÃO PARA RESETAR O JOGO ---
-void resetar_jogo(Player *p, Enemy inimigos[], Bullet bullets[], float *camera_x) {
+void resetar_jogo(Player *p, Enemy inimigos[], Bullet bullets[], float *camera_x, ALLEGRO_BITMAP *sprite_inimigo) {
     printf("Resetando o jogo...\n");
-
-    // Reseta o jogador
-    p->hp = 5; // Vida cheia
+    p->hp = 5;
     p->x = 100;
     p->y = FLOOR_Y;
     p->vel_x = 0;
     p->vel_y = 0;
     p->estado = PARADO;
-
-    // Reseta a câmera
     *camera_x = 0;
 
-    // "Mata" todos os projéteis ativos
-    for (int i = 0; i < MAX_BULLETS; i++) {
-        bullets[i].ativo = false;
-    }
+    for (int i = 0; i < MAX_BULLETS; i++) { bullets[i].ativo = false; }
 
-    // "Mata" todos os inimigos atuais e os respawna nas posições originais
     enemy_init(inimigos, MAX_INIMIGOS);
-    enemy_spawn(inimigos, MAX_INIMIGOS, al_load_bitmap("assets/enemy1.png"), 600, FLOOR_Y);
-    enemy_spawn(inimigos, MAX_INIMIGOS, al_load_bitmap("assets/enemy1.png"), 900, FLOOR_Y);
-    // Adicione mais spawns aqui para chegar aos 6 inimigos do requisito
+    // Usa o sprite já carregado
+    enemy_spawn(inimigos, MAX_INIMIGOS, sprite_inimigo, 600, FLOOR_Y);
+    enemy_spawn(inimigos, MAX_INIMIGOS, sprite_inimigo, 900, FLOOR_Y);
 }
 
 
@@ -81,6 +73,7 @@ int main() {
     // --- Variáveis de Estado do Jogo ---
     GameState estado_atual = MENU;
     int opcao_menu_selecionada = 0; // 0 = Iniciar, 1 = Sair
+    int opcao_gameover_selecionada = 0; // 0 = Tentar de Novo, 1 = Sair
 
     // --- Inicialização ---
     janela = al_create_display(LARGURA_TELA, ALTURA_TELA);
@@ -161,21 +154,47 @@ int main() {
                         }
                     }
                 }
-                break; // Fim do case MENU
+                break;
             case JOGANDO:
-                // Passa os eventos de teclado para o jogador apenas se estiver jogando
-                player_handle_input(jogador, &evento);
-                break; // Fim do case JOGANDO
+                // --- Lógica de Entrada do Jogador ---
+                controls_handle_input(jogador->controles, &evento);
+                break;
             case FIM_DE_JOGO:
-                if (evento.type == ALLEGRO_EVENT_KEY_DOWN) {
-                    // Agora a tecla Enter reinicia o jogo
-                    if (evento.keyboard.keycode == ALLEGRO_KEY_ENTER) {
-                        resetar_jogo(jogador, inimigos, bullets, &camera_x);
-                        estado_atual = JOGANDO;
+                { // Escopo local para variáveis
+                    int altura_linha = al_get_font_line_height(fonte);
+                    float y_opcao1_inicio = ALTURA_TELA / 2 + 20;
+                    float y_opcao1_fim = y_opcao1_inicio + altura_linha;
+                    float y_opcao2_inicio = y_opcao1_fim + 10;
+                    float y_opcao2_fim = y_opcao2_inicio + altura_linha;
+
+                    if (evento.type == ALLEGRO_EVENT_MOUSE_AXES) {
+                        int mouse_y = evento.mouse.y;
+                        if (mouse_y >= y_opcao1_inicio && mouse_y < y_opcao1_fim) opcao_gameover_selecionada = 0;
+                        else if (mouse_y >= y_opcao2_inicio && mouse_y < y_opcao2_fim) opcao_gameover_selecionada = 1;
                     }
-                    // E a tecla ESC vai para o menu
-                    if (evento.keyboard.keycode == ALLEGRO_KEY_ESCAPE) {
-                        estado_atual = MENU;
+
+                    if (evento.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN) {
+                        if (opcao_gameover_selecionada == 0) {
+                            resetar_jogo(jogador, inimigos, bullets, &camera_x, enemy_sprite);
+                            estado_atual = JOGANDO;
+                        } else if (opcao_gameover_selecionada == 1) {
+                            resetar_jogo(jogador, inimigos, bullets, &camera_x, enemy_sprite);
+                            estado_atual = MENU;
+                        }
+                    }
+
+                    if (evento.type == ALLEGRO_EVENT_KEY_DOWN) {
+                        if (evento.keyboard.keycode == ALLEGRO_KEY_UP) opcao_gameover_selecionada = 0;
+                        if (evento.keyboard.keycode == ALLEGRO_KEY_DOWN) opcao_gameover_selecionada = 1;
+                        if (evento.keyboard.keycode == ALLEGRO_KEY_ENTER) {
+                            if (opcao_gameover_selecionada == 0) {
+                                resetar_jogo(jogador, inimigos, bullets, &camera_x, enemy_sprite);
+                                estado_atual = JOGANDO;
+                            } else if (opcao_gameover_selecionada == 1) {
+                                resetar_jogo(jogador, inimigos, bullets, &camera_x, enemy_sprite);
+                                estado_atual = MENU;
+                            }
+                        }
                     }
                 }
                 break;
@@ -211,10 +230,9 @@ int main() {
                 case JOGANDO:
                     
                     player_update(jogador);
+                    for (int i = 0; i < MAX_INIMIGOS; i++) { if (inimigos[i].ativo) enemy_update(&inimigos[i], jogador, bullets, MAX_BULLETS); }
                     for (int i = 0; i < MAX_BULLETS; i++) { if (bullets[i].ativo) bullet_update(&bullets[i], camera_x); }
-                    for (int i = 0; i < MAX_INIMIGOS; i++) { 
-                        if (inimigos[i].ativo) enemy_update(&inimigos[i], jogador, bullets, MAX_BULLETS);
-                    }
+                    
                     player_fire(jogador, bullets, MAX_BULLETS);
 
                     // --- LÓGICA DE COLISÃO DO JOGADOR ---
@@ -303,25 +321,20 @@ int main() {
 
                     break; // Fim do case JOGANDO (desenho)
                 case FIM_DE_JOGO:
-                    al_draw_text(fonte, al_map_rgb(255, 0, 0), LARGURA_TELA / 2, ALTURA_TELA / 2 - 40, ALLEGRO_ALIGN_CENTER, "FIM DE JOGO");
-                    al_draw_text(fonte, al_map_rgb(255, 255, 255), LARGURA_TELA / 2, ALTURA_TELA / 2 + 20, ALLEGRO_ALIGN_CENTER, "Pressione ENTER para tentar novamente");
-                    al_draw_text(fonte, al_map_rgb(255, 255, 255), LARGURA_TELA / 2, ALTURA_TELA / 2 + 40, ALLEGRO_ALIGN_CENTER, "Pressione ESC para voltar ao menu");
+                {
+                    ALLEGRO_COLOR cor_selecionada = al_map_rgb(255, 255, 0);
+                    ALLEGRO_COLOR cor_padrao = al_map_rgb(255, 255, 255);
                     int altura_linha = al_get_font_line_height(fonte);
-                    int margem_entre_opcoes = 10;
-                        
-                    ALLEGRO_COLOR cor_selecionada = al_map_rgb(255, 255, 0); // Amarelo
-                    ALLEGRO_COLOR cor_padrao = al_map_rgb(255, 255, 255);   // Branco
 
-                    // Posições Y calculadas dinamicamente
-                    float y_titulo = ALTURA_TELA / 2.0f - altura_linha * 2;
-                    float y_opcao1 = ALTURA_TELA / 2.0f;
-                    float y_opcao2 = y_opcao1 + altura_linha + margem_entre_opcoes;
+                    float y_titulo = ALTURA_TELA / 2 - altura_linha * 2;
+                    float y_opcao1 = ALTURA_TELA / 2 + 20;
+                    float y_opcao2 = y_opcao1 + altura_linha + 10;
 
                     al_draw_text(fonte, al_map_rgb(255, 0, 0), LARGURA_TELA / 2, y_titulo, ALLEGRO_ALIGN_CENTER, "FIM DE JOGO");
-                        
-                    al_draw_text(fonte, (opcao_menu_selecionada == 0 ? cor_selecionada : cor_padrao), LARGURA_TELA / 2, y_opcao1, ALLEGRO_ALIGN_CENTER, "Iniciar Jogo");
-                    al_draw_text(fonte, (opcao_menu_selecionada == 1 ? cor_selecionada : cor_padrao), LARGURA_TELA / 2, y_opcao2, ALLEGRO_ALIGN_CENTER, "Sair");
-                    break;
+                    al_draw_text(fonte, (opcao_gameover_selecionada == 0 ? cor_selecionada : cor_padrao), LARGURA_TELA / 2, y_opcao1, ALLEGRO_ALIGN_CENTER, "Tentar Novamente");
+                    al_draw_text(fonte, (opcao_gameover_selecionada == 1 ? cor_selecionada : cor_padrao), LARGURA_TELA / 2, y_opcao2, ALLEGRO_ALIGN_CENTER, "Voltar para o Menu");
+                }
+                break;
             }
 
             al_flip_display();

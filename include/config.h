@@ -31,6 +31,8 @@ typedef enum {
 #define NUM_FRAMES_AGACHADO 1
 #define NUM_FRAMES_AGACHADO_ATIRANDO 4
 
+#define NUM_FRAMES_INIMIGO_SOLDADO 6
+
 // Hitbox para os estados normais (Parado, Correndo, Pulando)
 #define HITBOX_NORMAL_LARGURA 10
 #define HITBOX_NORMAL_ALTURA 65

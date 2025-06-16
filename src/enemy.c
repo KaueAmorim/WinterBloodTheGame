@@ -22,7 +22,7 @@ void enemy_spawn(Enemy inimigos[], int max_inimigos, ALLEGRO_BITMAP *sprite, flo
             e->folha_sprite = sprite;
             e->frame_largura = 128;
             e->frame_altura = 128;
-            e->num_frames = 6; // O nosso sprite 'enemy1.png' tem 2 frames
+            e->num_frames = NUM_FRAMES_INIMIGO_SOLDADO;
             e->frame_atual = 0;
             e->tempo_frame = 0;
             break; // Sai do loop após encontrar um espaço vago

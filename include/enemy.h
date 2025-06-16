@@ -6,7 +6,6 @@
 #include <math.h>
 #include "player.h"
 
-
 // Um enum para os tipos de inimigos, para o futuro
 typedef enum {
     SOLDADO_NORMAL
