@@ -23,7 +23,7 @@ bool check_collision(float r1x, float r1y, float r1w, float r1h, float r2x, floa
 }
 
 // --- NOVA FUNÇÃO PARA RESETAR O JOGO ---
-void resetar_jogo(Player *p, Enemy inimigos[], Bullet bullets[], float *camera_x, ALLEGRO_BITMAP *sprite_inimigo) {
+void resetar_jogo(Player *p, Enemy inimigos[], Bullet bullets[], float *camera_x, ALLEGRO_BITMAP *enemy_sprite_idle, ALLEGRO_BITMAP *enemy_sprite_shooting) {
     printf("Resetando o jogo...\n");
     p->hp = 5;
     p->x = 100;
@@ -37,8 +37,8 @@ void resetar_jogo(Player *p, Enemy inimigos[], Bullet bullets[], float *camera_x
 
     enemy_init(inimigos, MAX_INIMIGOS);
     // Usa o sprite já carregado
-    enemy_spawn(inimigos, MAX_INIMIGOS, sprite_inimigo, 600, FLOOR_Y);
-    enemy_spawn(inimigos, MAX_INIMIGOS, sprite_inimigo, 900, FLOOR_Y);
+    enemy_spawn(inimigos, MAX_INIMIGOS, enemy_sprite_idle, enemy_sprite_shooting, 600, FLOOR_Y);
+    enemy_spawn(inimigos, MAX_INIMIGOS, enemy_sprite_idle, enemy_sprite_shooting, 900, FLOOR_Y);
 }
 
 
@@ -65,7 +65,8 @@ int main() {
     Bullet bullets[MAX_BULLETS];
     Player *jogador = NULL;
     Enemy inimigos[MAX_INIMIGOS];
-    ALLEGRO_BITMAP *enemy_sprite = NULL;
+    ALLEGRO_BITMAP *enemy_sprite_idle = NULL;
+    ALLEGRO_BITMAP *enemy_sprite_shooting = NULL;
     
     float camera_x = 0, camera_y = 0;
     int rodando = 1;
@@ -83,9 +84,10 @@ int main() {
     cenario = al_load_bitmap("assets/cenario.webp");
     bullet_sprite = al_load_bitmap("assets/bullet.png");
     jogador = player_create(100, FLOOR_Y);
-    enemy_sprite = al_load_bitmap("assets/enemy1_idle.png");
+    enemy_sprite_idle = al_load_bitmap("assets/enemy1_idle.png");
+    enemy_sprite_shooting = al_load_bitmap("assets/enemy_shot.png");
 
-    if (!janela || !fila_eventos || !timer || !fonte || !cenario || !bullet_sprite || !jogador || !enemy_sprite) {
+    if (!janela || !fila_eventos || !timer || !fonte || !cenario || !bullet_sprite || !jogador || !enemy_sprite_idle || !enemy_sprite_shooting) {
         printf("ERRO: Falha em um dos componentes de inicialização.\n");
         return -1;
     }
@@ -94,8 +96,8 @@ int main() {
 
     enemy_init(inimigos, MAX_INIMIGOS); // <-- ADICIONE - Prepara o array de inimigos
     // Spawna alguns inimigos para teste
-    enemy_spawn(inimigos, MAX_INIMIGOS, enemy_sprite, 600, FLOOR_Y);
-    enemy_spawn(inimigos, MAX_INIMIGOS, enemy_sprite, 900, FLOOR_Y);
+    enemy_spawn(inimigos, MAX_INIMIGOS, enemy_sprite_idle, enemy_sprite_shooting, 600, FLOOR_Y);
+    enemy_spawn(inimigos, MAX_INIMIGOS, enemy_sprite_idle, enemy_sprite_shooting, 900, FLOOR_Y);
 
     al_set_window_title(janela, "Run 'n Gun");
     al_register_event_source(fila_eventos, al_get_keyboard_event_source());
@@ -174,10 +176,10 @@ int main() {
 
                     if (evento.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN) {
                         if (opcao_gameover_selecionada == 0) {
-                            resetar_jogo(jogador, inimigos, bullets, &camera_x, enemy_sprite);
+                            resetar_jogo(jogador, inimigos, bullets, &camera_x, enemy_sprite_idle, enemy_sprite_shooting);
                             estado_atual = JOGANDO;
                         } else if (opcao_gameover_selecionada == 1) {
-                            resetar_jogo(jogador, inimigos, bullets, &camera_x, enemy_sprite);
+                            resetar_jogo(jogador, inimigos, bullets, &camera_x, enemy_sprite_idle, enemy_sprite_shooting);
                             estado_atual = MENU;
                         }
                     }
@@ -187,10 +189,10 @@ int main() {
                         if (evento.keyboard.keycode == ALLEGRO_KEY_DOWN) opcao_gameover_selecionada = 1;
                         if (evento.keyboard.keycode == ALLEGRO_KEY_ENTER) {
                             if (opcao_gameover_selecionada == 0) {
-                                resetar_jogo(jogador, inimigos, bullets, &camera_x, enemy_sprite);
+                                resetar_jogo(jogador, inimigos, bullets, &camera_x, enemy_sprite_idle, enemy_sprite_shooting);
                                 estado_atual = JOGANDO;
                             } else if (opcao_gameover_selecionada == 1) {
-                                resetar_jogo(jogador, inimigos, bullets, &camera_x, enemy_sprite);
+                                resetar_jogo(jogador, inimigos, bullets, &camera_x, enemy_sprite_idle, enemy_sprite_shooting);
                                 estado_atual = MENU;
                             }
                         }
@@ -292,7 +294,7 @@ int main() {
 
                     player_draw(jogador, camera_x, camera_y);
                     for (int i = 0; i < MAX_BULLETS; i++) { bullet_draw(&bullets[i], bullet_sprite, camera_x, camera_y); }
-                    enemy_draw(inimigos, MAX_INIMIGOS, camera_x);
+                    enemy_draw(inimigos, MAX_INIMIGOS, camera_x, camera_y);
                     al_draw_textf(fonte, al_map_rgb(255, 255, 0), 10, 10, 0, "VIDA: %d", jogador->hp);
 
                     float player_w = jogador->hitbox_largura * ESCALA;
@@ -324,11 +326,13 @@ int main() {
     }
 
     // --- Finalização ---
+    enemy_destroy_animations(inimigos, MAX_INIMIGOS);
     al_destroy_font(fonte);
     player_destroy(jogador);
     al_destroy_bitmap(cenario);
     al_destroy_bitmap(bullet_sprite);
-    al_destroy_bitmap(enemy_sprite);
+    al_destroy_bitmap(enemy_sprite_idle);
+    al_destroy_bitmap(enemy_sprite_shooting);
     al_destroy_timer(timer);
     al_destroy_event_queue(fila_eventos);
     al_destroy_display(janela);
