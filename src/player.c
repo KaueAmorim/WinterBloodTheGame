@@ -8,25 +8,28 @@ Player* player_create(float x, float y) {
     p->x = x;
     p->y = y;
     p->direcao = 1;
-    p->estado = PARADO;
+    p->hp = 5;
     p->frame_largura = 128;
     p->frame_altura = 128;
     p->no_chao = true;
-    p->hp = 5;
-
     p->controles = controls_create();
+
     if (!p->controles) {
         player_destroy(p);
         return NULL;
     }
 
-    // Usa as constantes do config.h para configurar os frames
-    p->num_frames_parado = NUM_FRAMES_PARADO;
-    p->num_frames_correndo = NUM_FRAMES_CORRENDO;
-    p->num_frames_atirando = NUM_FRAMES_ATIRANDO;
-    p->num_frames_pulando = NUM_FRAMES_PULANDO;
-    p->num_frames_agachado = NUM_FRAMES_AGACHADO;
-    p->num_frames_agachado_atirando = NUM_FRAMES_AGACHADO_ATIRANDO;
+    // Cria um objeto de animação para cada estado do jogador
+    p->anim_parado = animation_create(NUM_FRAMES_PARADO, FPS_ANIMACAO);
+    p->anim_correndo = animation_create(NUM_FRAMES_CORRENDO, FPS_ANIMACAO);
+    p->anim_pulando = animation_create(NUM_FRAMES_PULANDO, FPS_ANIMACAO);
+    p->anim_atirando = animation_create(NUM_FRAMES_ATIRANDO, FPS_ANIMACAO * 2); // Animação de tiro mais rápida
+    p->anim_agachado = animation_create(NUM_FRAMES_AGACHADO, FPS_ANIMACAO);
+    p->anim_agachado_atirando = animation_create(NUM_FRAMES_AGACHADO_ATIRANDO, FPS_ANIMACAO * 2);
+
+    // Define a animação inicial
+    p->anim_atual = p->anim_parado;
+    p->estado = PARADO;
 
     // Carrega todas as folhas de sprite necessárias
     p->folha_sprite_parado = al_load_bitmap("assets/Idle.png");
@@ -48,13 +51,21 @@ Player* player_create(float x, float y) {
 
 void player_destroy(Player *p) {
     if (p) {
-        controls_destroy(p->controles);
+        animation_destroy(p->anim_parado);
+        animation_destroy(p->anim_correndo);
+        animation_destroy(p->anim_pulando);
+        animation_destroy(p->anim_atirando);
+        animation_destroy(p->anim_agachado);
+        animation_destroy(p->anim_agachado_atirando);
+
         al_destroy_bitmap(p->folha_sprite_parado);
         al_destroy_bitmap(p->folha_sprite_correndo);
         al_destroy_bitmap(p->folha_sprite_atirando);
         al_destroy_bitmap(p->folha_sprite_pulando);
         al_destroy_bitmap(p->folha_sprite_agachado);
         al_destroy_bitmap(p->folha_sprite_agachado_atirando);
+
+        controls_destroy(p->controles);
         free(p);
     }
 }
@@ -64,35 +75,46 @@ void player_update(Player *p) {
 
     // Se o jogador está no meio da animação de tiro, ela tem prioridade
     if (p->estado == ATIRANDO || p->estado == AGACHADO_ATIRANDO) {
-        p->tempo_estado_tiro -= 1.0 / 60.0;
+        p->tempo_estado_tiro -= 1.0 / 60.0; // Diminui o timer
         if (p->tempo_estado_tiro <= 0) {
-            // Quando o tiro acaba, se a tecla baixo AINDA estiver pressionada, volta para agachado
+            // Se a tecla "baixo" estiver pressionada, volta para AGACHADO.
             if (p->controles->baixo) {
-                 p->estado = AGACHADO;
-            } else { // Senão, volta para parado
-                 p->estado = PARADO;
+                p->estado = AGACHADO;
+            }
+            // Senão, verifica se deve voltar a correr.
+            else if (p->controles->esquerda || p->controles->direita) {
+                p->estado = CORRENDO;
+            }
+            // Se nenhuma tecla de movimento estiver pressionada, volta para PARADO.
+            else {
+                p->estado = PARADO;
             }
         }
     }
     else if (!p->no_chao) {
         p->estado = PULANDO;
+        p->anim_atual = p->anim_pulando;
     }
     else if (p->controles->baixo) {
         p->estado = AGACHADO;
         p->vel_x = 0; // Impede o jogador de se mover enquanto está agachado
+        p->anim_atual = p->anim_agachado;
     }
     else {
         if (p->controles->esquerda) {
             p->vel_x = -VELOCIDADE_JOGADOR;
             p->direcao = -1;
             p->estado = CORRENDO;
+            p->anim_atual = p->anim_correndo;
         } else if (p->controles->direita) {
             p->vel_x = VELOCIDADE_JOGADOR;
             p->direcao = 1;
             p->estado = CORRENDO;
+            p->anim_atual = p->anim_correndo;
         } else {
             p->vel_x = 0;
             p->estado = PARADO;
+            p->anim_atual = p->anim_parado;
         }
     }
 
@@ -123,29 +145,12 @@ void player_update(Player *p) {
         p->no_chao = true;
     }
 
-    // --- Animação ---
+    // Se o estado mudou, reseta a nova animação para começar do frame 0
     if (p->estado != estado_anterior) {
-        p->frame_atual = 0;
-        p->tempo_frame = 0;
+        animation_reset(p->anim_atual);
     }
-    p->tempo_frame += 1.0 / 60.0;
-    if (p->tempo_frame >= 1.0 / FPS_ANIMACAO) {
-        p->tempo_frame = 0;
-        p->frame_atual++;
-
-        int total_frames_animacao = 0;
-        if (p->estado == PARADO) total_frames_animacao = p->num_frames_parado;
-        else if (p->estado == CORRENDO) total_frames_animacao = p->num_frames_correndo;
-        else if (p->estado == ATIRANDO) total_frames_animacao = p->num_frames_atirando;
-        else if (p->estado == PULANDO) total_frames_animacao = p->num_frames_pulando;
-        else if (p->estado == AGACHADO) total_frames_animacao = p->num_frames_agachado;
-        else if (p->estado == AGACHADO_ATIRANDO) total_frames_animacao = p->num_frames_agachado_atirando;
-
-        if (p->frame_atual >= total_frames_animacao) {
-            if (p->estado == ATIRANDO) p->frame_atual = total_frames_animacao - 1;
-            else p->frame_atual = 0;
-        }
-    }
+    
+    animation_update(p->anim_atual);
 
     // --- Cooldown de Tiro ---
     if (p->cooldown_tiro > 0) {
@@ -174,55 +179,57 @@ void player_draw(Player *p, float camera_x, float camera_y) {
         case ATIRANDO: folha_atual = p->folha_sprite_atirando; break;
         case CORRENDO: folha_atual = p->folha_sprite_correndo; break;
         case PULANDO:  folha_atual = p->folha_sprite_pulando;  break;
-        case PARADO:   folha_atual = p->folha_sprite_parado;   break;
         case AGACHADO: folha_atual = p->folha_sprite_agachado; break;
         case AGACHADO_ATIRANDO: folha_atual = p->folha_sprite_agachado_atirando; break;
+        case PARADO:   folha_atual = p->folha_sprite_parado;   break;
     }
     
     if (folha_atual) {
         int flags = (p->direcao == -1) ? ALLEGRO_FLIP_HORIZONTAL : 0;
-        float sx = p->frame_atual * p->frame_largura;
+        // Pega o frame atual diretamente do TAD de animação
+        float sx = p->anim_atual->frame_atual * p->frame_largura;
         float sy = 0;
         float dw = p->frame_largura * ESCALA;
         float dh = p->frame_altura * ESCALA;
+
         al_draw_scaled_bitmap(folha_atual, sx, sy, p->frame_largura, p->frame_altura, p->x - camera_x, p->y - camera_y, dw, dh, flags);
     }
 }
 
 void player_fire(Player *p, Bullet bullets[], int max_bullets) {
+    // Só pode atirar se a tecla estiver pressionada E o cooldown tiver zerado
     if (p->controles->tiro && p->cooldown_tiro <= 0) {
+        
+        // Encontra o primeiro projétil inativo no arsenal
         for (int i = 0; i < max_bullets; i++) {
             if (!bullets[i].ativo) {
                 
                 float offset_x = 0;
                 float offset_y = 0;
 
-                // --- SWITCH CORRIGIDO E COMPLETO ---
+                // Escolhe o offset da "ponta da arma" baseado no estado do jogador
                 switch(p->estado) {
-                    case PARADO:
-                        offset_x = OFFSET_TIRO_PARADO_X;
-                        offset_y = OFFSET_TIRO_PARADO_Y;
+                    case PARADO:   
+                        offset_x = OFFSET_TIRO_PARADO_X;   
+                        offset_y = OFFSET_TIRO_PARADO_Y;   
                         break;
-                    case CORRENDO:
-                        offset_x = OFFSET_TIRO_CORRENDO_X;
-                        offset_y = OFFSET_TIRO_CORRENDO_Y;
+                    case CORRENDO: 
+                        offset_x = OFFSET_TIRO_CORRENDO_X; 
+                        offset_y = OFFSET_TIRO_CORRENDO_Y; 
                         break;
-                    case ATIRANDO:
-                        offset_x = OFFSET_TIRO_ATIRANDO_X;
-                        offset_y = OFFSET_TIRO_ATIRANDO_Y;
+                    case PULANDO:  
+                        offset_x = OFFSET_TIRO_PULANDO_X;  
+                        offset_y = OFFSET_TIRO_PULANDO_Y;  
                         break;
-                    case PULANDO:
-                        offset_x = OFFSET_TIRO_PULANDO_X;
-                        offset_y = OFFSET_TIRO_PULANDO_Y;
-                        break;
-                    case AGACHADO:
-                        offset_x = OFFSET_TIRO_AGACHADO_X;
-                        offset_y = OFFSET_TIRO_AGACHADO_Y;
+                    case AGACHADO: 
+                        offset_x = OFFSET_TIRO_AGACHADO_X; 
+                        offset_y = OFFSET_TIRO_AGACHADO_Y; 
                         break;
                 }
 
                 float start_x, start_y;
 
+                // Calcula a posição inicial do projétil, invertendo o X se necessário
                 if (p->direcao == 1) { // Direita
                     start_x = p->x + (offset_x * ESCALA);
                 } else { // Esquerda
@@ -230,21 +237,28 @@ void player_fire(Player *p, Bullet bullets[], int max_bullets) {
                 }
                 start_y = p->y + (offset_y * ESCALA);
                 
-                // Dispara o projétil
-                bullet_fire(&bullets[i], start_x, start_y, p->direcao);
+                // Dispara o projétil, especificando o dono
+                bullet_fire(&bullets[i], start_x, start_y, p->direcao, OWNER_PLAYER);
                 
-                // Define o estado de tiro correto
+                // Reinicia o cooldown do tiro
+                p->cooldown_tiro = 0.3f; 
+
+                // Verifica se o tiro foi dado agachado
                 if (p->estado == AGACHADO || p->estado == AGACHADO_ATIRANDO) {
                     p->estado = AGACHADO_ATIRANDO;
+                    p->anim_atual = p->anim_agachado_atirando;
                 } else {
                     p->estado = ATIRANDO;
+                    p->anim_atual = p->anim_atirando;
                 }
-
-                // Reinicia os timers e frames
-                p->cooldown_tiro = 0.3f; 
+                
+                // Reseta a nova animação de tiro para que ela comece do frame 0
+                animation_reset(p->anim_atual);
+                
+                // O timer que controla a DURAÇÃO do estado de tiro ainda é necessário
                 p->tempo_estado_tiro = 0.25f;
-                p->frame_atual = 0;
-                break; 
+
+                break;
             }
         }
     }

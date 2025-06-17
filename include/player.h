@@ -7,6 +7,7 @@
 #include "config.h"
 #include "bullet.h"
 #include "controls.h"
+#include "animation.h"
 
 typedef enum { PARADO, CORRENDO, ATIRANDO, PULANDO, AGACHADO, AGACHADO_ATIRANDO } EstadoJogador;
 
@@ -15,9 +16,15 @@ typedef struct {
     int hp;
     int direcao;
     EstadoJogador estado;
-    int frame_atual;
-    double tempo_frame;
 
+    Animation *anim_parado;
+    Animation *anim_correndo;
+    Animation *anim_pulando;
+    Animation *anim_atirando;
+    Animation *anim_agachado;
+    Animation *anim_agachado_atirando;
+    Animation *anim_atual;
+    
     // Ponteiros para TODAS as folhas de sprite
     ALLEGRO_BITMAP *folha_sprite_parado;
     ALLEGRO_BITMAP *folha_sprite_correndo;
@@ -28,14 +35,9 @@ typedef struct {
 
     int frame_largura, frame_altura;
 
-    // Contagem de frames para TODAS as animações
-    int num_frames_parado, num_frames_correndo, num_frames_atirando, num_frames_pulando, num_frames_agachado, num_frames_agachado_atirando;
-    
-    // Timer para controlar a duração da animação de tiro
-    float tempo_estado_tiro;
-
     Controls *controles;
     float cooldown_tiro;
+    float tempo_estado_tiro;
     bool no_chao;
 
     // Hitbox Ativa (as dimensões atuais da colisão)

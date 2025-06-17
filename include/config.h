@@ -37,7 +37,7 @@ typedef enum {
 #define HITBOX_NORMAL_LARGURA 10
 #define HITBOX_NORMAL_ALTURA 65
 #define HITBOX_NORMAL_OFFSET_X 55 
-#define HITBOX_NORMAL_OFFSET_Y 60 
+#define HITBOX_NORMAL_OFFSET_Y 65 
 
 // Hitbox para o estado AGACHADO (menor e mais baixa)
 #define HITBOX_AGACHADO_LARGURA 10

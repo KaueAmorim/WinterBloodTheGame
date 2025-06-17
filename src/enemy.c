@@ -8,6 +8,13 @@ void enemy_init(Enemy inimigos[], int max_inimigos) {
     }
 }
 
+void enemy_destroy(Enemy *e) {
+    if (e) {
+        animation_destroy(e->animacao);
+        // Nota: não destruímos a folha_sprite aqui, pois ela é compartilhada e destruída em main.c
+    }
+}
+
 // "Spawna" um inimigo em uma posição específica
 void enemy_spawn(Enemy inimigos[], int max_inimigos, ALLEGRO_BITMAP *sprite, float x, float y) {
     for (int i = 0; i < max_inimigos; i++) {
@@ -22,10 +29,8 @@ void enemy_spawn(Enemy inimigos[], int max_inimigos, ALLEGRO_BITMAP *sprite, flo
             e->folha_sprite = sprite;
             e->frame_largura = 128;
             e->frame_altura = 128;
-            e->num_frames = NUM_FRAMES_INIMIGO_SOLDADO;
-            e->frame_atual = 0;
-            e->tempo_frame = 0;
-            break; // Sai do loop após encontrar um espaço vago
+            e->animacao = animation_create(NUM_FRAMES_INIMIGO_SOLDADO, FPS_ANIMACAO / 2.0);
+            break;
         }
     }
 }
@@ -55,7 +60,7 @@ void enemy_update(Enemy *e, Player *p, Bullet bullets[], int max_bullets) {
                     float start_x = e->x + (e->direcao == 1 ? e->frame_largura * ESCALA : 0);
                     float start_y = e->y + (e->frame_altura * ESCALA / 2.0);
                     
-                    bullet_fire(&bullets[i], start_x, start_y, e->direcao);
+                    bullet_fire(&bullets[i], start_x, start_y, e->direcao, OWNER_ENEMY);
                     e->cooldown_tiro = 2.0f; // Inimigo atira a cada 2 segundos
                     break;
                 }
@@ -63,12 +68,7 @@ void enemy_update(Enemy *e, Player *p, Bullet bullets[], int max_bullets) {
         }
     }
 
-    // Animação do inimigo (continua a mesma)
-    e->tempo_frame += 1.0 / 60.0;
-    if (e->tempo_frame >= 1.0 / (FPS_ANIMACAO / 2.0)) {
-        e->tempo_frame = 0;
-        e->frame_atual = (e->frame_atual + 1) % e->num_frames;
-    }
+    animation_update(e->animacao);
 }
 
 // Desenha todos os inimigos ativos
@@ -76,7 +76,7 @@ void enemy_draw(Enemy inimigos[], int max_inimigos, float camera_x) {
     for (int i = 0; i < max_inimigos; i++) {
         if (inimigos[i].ativo) {
             Enemy *e = &inimigos[i];
-            float sx = e->frame_atual * e->frame_largura;
+            float sx = e->animacao->frame_atual * e->frame_largura;
             float sy = 0;
             float dw = e->frame_largura * ESCALA;
             float dh = e->frame_altura * ESCALA;

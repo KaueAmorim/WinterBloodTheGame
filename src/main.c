@@ -156,7 +156,6 @@ int main() {
                 }
                 break;
             case JOGANDO:
-                // --- Lógica de Entrada do Jogador ---
                 controls_handle_input(jogador->controles, &evento);
                 break;
             case FIM_DE_JOGO:
@@ -235,69 +234,52 @@ int main() {
                     
                     player_fire(jogador, bullets, MAX_BULLETS);
 
-                    // --- LÓGICA DE COLISÃO DO JOGADOR ---
+                    // --- LÓGICA DE COMBATE E COLISÃO ATUALIZADA ---
                     for (int i = 0; i < MAX_BULLETS; i++) {
                         if (!bullets[i].ativo) continue;
 
-                        // Caixa de colisão do projétil (continua a mesma)
+                        // Caixa de colisão do projétil
                         float bullet_x = bullets[i].x, bullet_y = bullets[i].y;
                         float bullet_w = LARGURA_BULLET, bullet_h = ALTURA_BULLET;
 
-                        // --- LÓGICA DA HITBOX DO JOGADOR ATUALIZADA ---
-                        float player_w = jogador->hitbox_largura * ESCALA;
-                        float player_h = jogador->hitbox_altura * ESCALA;
-                        float player_x = jogador->x + (jogador->hitbox_offset_x * ESCALA);
-                        float player_y = jogador->y + (jogador->hitbox_offset_y * ESCALA);
-                        // -------------------------------------------------
+                        // VERIFICA SE O PROJÉTIL DO JOGADOR ACERTOU UM INIMIGO
+                        if (bullets[i].owner == OWNER_PLAYER) {
+                            for (int j = 0; j < MAX_INIMIGOS; j++) {
+                                if (!inimigos[j].ativo) continue;
 
-                        // A verificação de colisão agora usa a hitbox correta para o estado atual
-                        if (bullets[i].vel_x * jogador->direcao < 0 && 
-                            check_collision(bullet_x, bullet_y, bullet_w, bullet_h, player_x, player_y, player_w, player_h)) {
-                            
-                            bullets[i].ativo = false;
-                            jogador->hp--;
-                        }
-                    }
+                                // --- LÓGICA DA HITBOX DO INIMIGO ---
+                                float enemy_w = HITBOX_INIMIGO_LARGURA * ESCALA;
+                                float enemy_h = HITBOX_INIMIGO_ALTURA * ESCALA;
+                                float enemy_x = inimigos[j].x + (HITBOX_INIMIGO_OFFSET_X * ESCALA);
+                                float enemy_y = inimigos[j].y + (HITBOX_INIMIGO_OFFSET_Y * ESCALA);
 
-                    // Verifica se o jogador "morreu"
-                    if (jogador->hp <= 0) {
-                        estado_atual = FIM_DE_JOGO;
-                    }
-    
-                    // --- NOVA LÓGICA DE COMBATE E COLISÃO ---
-                    for (int i = 0; i < MAX_BULLETS; i++) {
-                        if (!bullets[i].ativo) continue; // Pula projéteis inativos
-        
-                        for (int j = 0; j < MAX_INIMIGOS; j++) {
-                            if (!inimigos[j].ativo) continue; // Pula inimigos inativos
-        
-                            // Define as "caixas de colisão" para o projétil e o inimigo
-                            float bullet_x = bullets[i].x, bullet_y = bullets[i].y;
-                            float bullet_w = LARGURA_BULLET, bullet_h = ALTURA_BULLET;
-        
-                            // --- LÓGICA DA HITBOX DO INIMIGO ATUALIZADA ---
-                            float enemy_w = HITBOX_INIMIGO_LARGURA * ESCALA;
-                            float enemy_h = HITBOX_INIMIGO_ALTURA * ESCALA;
-                            float enemy_x = inimigos[j].x + (HITBOX_INIMIGO_OFFSET_X * ESCALA);
-                            float enemy_y = inimigos[j].y + (HITBOX_INIMIGO_OFFSET_Y * ESCALA);
-                            // ---------------------------------------------
-
-        
-                            // 1. Verifica se houve colisão
-                            if (check_collision(bullet_x, bullet_y, bullet_w, bullet_h, enemy_x, enemy_y, enemy_w, enemy_h)) {
-                                
-                                // 2. Se colidiu, aplica as consequências
-                                bullets[i].ativo = false; // O projétil desaparece
-                                inimigos[j].hp--;         // O inimigo perde 1 ponto de vida
-        
-                                // 3. Verifica se o inimigo "morreu"
-                                if (inimigos[j].hp <= 0) {
-                                    inimigos[j].ativo = false; // Desativa o inimigo
+                                if (check_collision(bullet_x, bullet_y, bullet_w, bullet_h, enemy_x, enemy_y, enemy_w, enemy_h)) {
+                                    bullets[i].ativo = false; 
+                                    inimigos[j].hp--;
+                                    if (inimigos[j].hp <= 0) {
+                                        inimigos[j].ativo = false;
+                                    }
+                                    break; 
                                 }
-                                
-                                // O projétil já acertou um alvo, então podemos parar de verificá-lo
-                                break; 
                             }
+                        }
+                        // VERIFICA SE O PROJÉTIL DO INIMIGO ACERTOU O JOGADOR
+                        else if (bullets[i].owner == OWNER_ENEMY) {
+
+                            // --- LÓGICA DA HITBOX DO JOGADOR ---
+                            float player_w = jogador->hitbox_largura * ESCALA;
+                            float player_h = jogador->hitbox_altura * ESCALA;
+                            float player_x = jogador->x + (jogador->hitbox_offset_x * ESCALA);
+                            float player_y = jogador->y + (jogador->hitbox_offset_y * ESCALA);
+
+                            if (check_collision(bullet_x, bullet_y, bullet_w, bullet_h, player_x, player_y, player_w, player_h)) {
+                                bullets[i].ativo = false;
+                                jogador->hp--;
+                                if (jogador->hp <= 0) {
+                                    estado_atual = FIM_DE_JOGO;
+                                }
+                            }
+                        
                         }
                     }
 

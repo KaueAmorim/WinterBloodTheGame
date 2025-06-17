@@ -2,12 +2,13 @@
 #include "config.h" 
 
 // Ao atirar, damos ao projétil um tempo de vida
-void bullet_fire(Bullet *b, float start_x, float start_y, int direction) {
+void bullet_fire(Bullet *b, float start_x, float start_y, int direction, BulletOwner owner) {
     b->ativo = true;
     b->x = start_x;
     b->y = start_y;
     b->vel_x = VELOCIDADE_PROJETIL * direction;
     b->direcao = direction;
+    b->owner = owner;
 }
 
 // A função agora recebe camera_x para saber onde está a tela
