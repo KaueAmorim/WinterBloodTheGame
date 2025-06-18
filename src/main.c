@@ -20,8 +20,8 @@ typedef struct {
 
 static const EnemySpawnInfo level1_spawns[] = {
     {SOLDADO_ESCUDO, 800, FLOOR_Y},
-    {SOLDADO_ESPINGARDA, 1800, FLOOR_Y},
-    {SOLDADO_ESCUDO, 1900, FLOOR_Y},
+    {SOLDADO_ESCUDO, 1800, FLOOR_Y},
+    {SOLDADO_ESPINGARDA, 1900, FLOOR_Y},
     {SOLDADO_ESCUDO, 2900, FLOOR_Y},
     {SOLDADO_ESPINGARDA, 3000, FLOOR_Y},
     {SOLDADO_ESCUDO, 3100, FLOOR_Y},
@@ -104,6 +104,7 @@ int main() {
     Bullet bullets[MAX_BULLETS];
     Player *jogador = NULL;
     Enemy inimigos[MAX_INIMIGOS];
+    ALLEGRO_BITMAP *heart_sprite = NULL;
     
     float camera_x = 0, camera_y = 0;
     int rodando = 1;
@@ -120,9 +121,10 @@ int main() {
     fonte = al_load_font("assets/PressStart2P-Regular.ttf", 50, 0); 
     cenario = al_load_bitmap("assets/cenario.webp");
     bullet_sprite = al_load_bitmap("assets/bullet.png");
+    heart_sprite = al_load_bitmap("assets/heart.png");
     jogador = player_create(100, FLOOR_Y);
 
-    if (!janela || !fila_eventos || !timer || !fonte || !cenario || !bullet_sprite || !jogador) {
+    if (!janela || !fila_eventos || !timer || !fonte || !cenario || !bullet_sprite || !jogador || !heart_sprite) {
         printf("ERRO: Falha em um dos componentes de inicialização.\n");
         return -1;
     }
@@ -143,14 +145,14 @@ int main() {
     }
 
     EnemyConfig config_soldado_espingarda = {
-        .tipo = SOLDADO_ESPINGARDA, .hp = 3,
+        .tipo = SOLDADO_ESPINGARDA, .hp = 5,
         .num_frames_parado = 6, .num_frames_atirando = 7, .num_frames_morrendo = 5,
         .folha_sprite_parado = enemy1_sprite_idle,
         .folha_sprite_atirando = enemy1_sprite_shooting,
         .folha_sprite_morrendo = enemy1_sprite_death
     };
     EnemyConfig config_soldado_escudo = {
-        .tipo = SOLDADO_ESCUDO, .hp = 5,
+        .tipo = SOLDADO_ESCUDO, .hp = 8,
         .num_frames_parado = 6, .num_frames_atirando = 5, .num_frames_morrendo = 6,
         .folha_sprite_parado = enemy2_sprite_idle,
         .folha_sprite_atirando = enemy2_sprite_shooting,
@@ -372,7 +374,28 @@ int main() {
                     player_draw(jogador, camera_x, camera_y);
                     for (int i = 0; i < MAX_BULLETS; i++) { bullet_draw(&bullets[i], bullet_sprite, camera_x, camera_y); }
                     enemy_draw(inimigos, MAX_INIMIGOS, camera_x, camera_y);
-                    al_draw_textf(fonte, al_map_rgb(255, 255, 0), 10, 10, 0, "VIDA: %d", jogador->hp);
+                    
+                    if (heart_sprite) {
+                        int padding = 5; // Espaçamento entre os corações
+
+                        for (int i = 0; i < jogador->hp; i++) {
+                            // Calcula a posição X de cada coração
+                            float x_pos = 10 + i * (LARGURA_CORACAO + padding);
+                            float y_pos = 10;
+                            
+                            // Desenha o sprite do coração no tamanho definido em config.h
+                            al_draw_scaled_bitmap(
+                                heart_sprite,
+                                0, 0, // Coordenadas de origem na imagem (começa do canto)
+                                al_get_bitmap_width(heart_sprite), // Largura original total da imagem
+                                al_get_bitmap_height(heart_sprite),// Altura original total da imagem
+                                x_pos, y_pos,                       // Posição de destino na tela
+                                LARGURA_CORACAO,                    // Largura final na tela
+                                ALTURA_CORACAO,                     // Altura final na tela
+                                0
+                            );
+                        }
+                    }
 
                     break; // Fim do case JOGANDO (desenho)
                 case FIM_DE_JOGO:
@@ -402,6 +425,7 @@ int main() {
     player_destroy(jogador);
     al_destroy_bitmap(cenario);
     al_destroy_bitmap(bullet_sprite);
+    al_destroy_bitmap(heart_sprite);
     al_destroy_bitmap(enemy1_sprite_idle);
     al_destroy_bitmap(enemy1_sprite_shooting);
     al_destroy_bitmap(enemy1_sprite_death);

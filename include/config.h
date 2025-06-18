@@ -7,6 +7,8 @@ typedef enum { MENU, JOGANDO, FIM_DE_JOGO, SAIR } GameState;
 #define LARGURA_TELA 1000
 #define ALTURA_TELA 650
 #define LARGURA_MUNDO 1156 // Ou o tamanho do seu cenário
+#define LARGURA_CORACAO 50 // Largura desejada para o coração na tela
+#define ALTURA_CORACAO 50
 
 // --- JOGADOR ---
 #define ESCALA 2.0f 
