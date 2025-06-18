@@ -29,10 +29,10 @@ LDFLAGS = $(shell pkg-config --libs --cflags allegro-5 allegro_main-5 allegro_pr
 # --- REGRAS DE COMPILAÇÃO ---
 
 # Regra principal: o que acontece quando você digita 'make'
-all: $(BINDIR)/$(TARGET)
+all: $(TARGET)
 
 # Regra para criar o executável final
-$(BINDIR)/$(TARGET): $(OBJECTS)
+$(TARGET): $(OBJECTS)
 	@mkdir -p $(BINDIR)
 	$(CC) $(OBJECTS) -o $@ $(LDFLAGS)
 	@echo "Compilação concluída! Executável criado em $(BINDIR)/$(TARGET)"

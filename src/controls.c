@@ -32,3 +32,14 @@ void controls_handle_input(Controls *c, ALLEGRO_EVENT *evento) {
         }
     }
 }
+
+// Reseta todos os estados de tecla para 'false'
+void controls_reset(Controls *c) {
+    if (!c) return;
+
+    c->cima = false;
+    c->baixo = false;
+    c->esquerda = false;
+    c->direita = false;
+    c->tiro = false;
+}

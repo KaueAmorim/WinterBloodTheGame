@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
+#include <time.h>
 #include <allegro5/allegro5.h>
 #include <allegro5/allegro_image.h>
 #include <allegro5/allegro_font.h>
@@ -10,6 +12,26 @@
 #include "player.h"
 #include "bullet.h"
 #include "enemy.h"
+
+// Struct para guardar os dados de spawn de um inimigo
+typedef struct {
+    EnemyType tipo;
+    float x;
+    float y;
+} EnemySpawnInfo;
+
+static const EnemySpawnInfo level1_spawns[] = {
+    {SOLDADO_ESCUDO, 800, FLOOR_Y},
+    {SOLDADO_ESPINGARDA, 1800, FLOOR_Y},
+    {SOLDADO_ESCUDO, 1900, FLOOR_Y},
+    {SOLDADO_ESCUDO, 2900, FLOOR_Y},
+    {SOLDADO_ESPINGARDA, 3000, FLOOR_Y},
+    {SOLDADO_ESCUDO, 3100, FLOOR_Y},
+    {SOLDADO_ESPINGARDA, 3200, FLOOR_Y}
+};
+
+// Calcula automaticamente quantos inimigos temos na lista
+static const int num_level1_spawns = sizeof(level1_spawns) / sizeof(level1_spawns[0]);
 
 // Função que verifica se dois retângulos (r1 e r2) estão colidindo
 bool check_collision(float r1x, float r1y, float r1w, float r1h, float r2x, float r2y, float r2w, float r2h) {
@@ -22,25 +44,43 @@ bool check_collision(float r1x, float r1y, float r1w, float r1h, float r2x, floa
     return false;
 }
 
-// --- NOVA FUNÇÃO PARA RESETAR O JOGO ---
-void resetar_jogo(Player *p, Enemy inimigos[], Bullet bullets[], float *camera_x, ALLEGRO_BITMAP *enemy_sprite_idle, ALLEGRO_BITMAP *enemy_sprite_shooting) {
+void resetar_jogo(Player *p, Enemy inimigos[], Bullet bullets[], float *camera_x, const EnemyConfig *config_soldado_espingarda, const EnemyConfig *config_soldado_escudo) {
     printf("Resetando o jogo...\n");
+
+    // Reseta o estado do jogador
     p->hp = 5;
     p->x = 100;
     p->y = FLOOR_Y;
     p->vel_x = 0;
     p->vel_y = 0;
     p->estado = PARADO;
+    p->direcao = 1;
+    p->anim_atual = p->anim_parado;
+    animation_reset(p->anim_atual);
+    controls_reset(p->controles);
+
+    // Reseta a câmera
     *camera_x = 0;
 
+    // Limpa projéteis e inimigos antigos
     for (int i = 0; i < MAX_BULLETS; i++) { bullets[i].ativo = false; }
-
+    enemy_destroy_animations(inimigos, MAX_INIMIGOS);
     enemy_init(inimigos, MAX_INIMIGOS);
-    // Usa o sprite já carregado
-    enemy_spawn(inimigos, MAX_INIMIGOS, enemy_sprite_idle, enemy_sprite_shooting, 600, FLOOR_Y);
-    enemy_spawn(inimigos, MAX_INIMIGOS, enemy_sprite_idle, enemy_sprite_shooting, 900, FLOOR_Y);
+    
+    // --- LÓGICA DE SPAWN CORRIGIDA (lendo o mapa da fase) ---
+    for (int i = 0; i < num_level1_spawns; i++) {
+        const EnemyConfig *config_atual = NULL;
+        if (level1_spawns[i].tipo == SOLDADO_ESPINGARDA) {
+            config_atual = config_soldado_espingarda;
+        } else if (level1_spawns[i].tipo == SOLDADO_ESCUDO) {
+            config_atual = config_soldado_escudo;
+        }
+        
+        if (config_atual) {
+            enemy_spawn(inimigos, MAX_INIMIGOS, config_atual, level1_spawns[i].x, level1_spawns[i].y);
+        }
+    }
 }
-
 
 void inicializar_allegro() {
     al_init();
@@ -53,6 +93,9 @@ void inicializar_allegro() {
 }
 
 int main() {
+
+    srand(time(NULL));
+
     inicializar_allegro();
 
     // --- Variáveis ---
@@ -65,8 +108,6 @@ int main() {
     Bullet bullets[MAX_BULLETS];
     Player *jogador = NULL;
     Enemy inimigos[MAX_INIMIGOS];
-    ALLEGRO_BITMAP *enemy_sprite_idle = NULL;
-    ALLEGRO_BITMAP *enemy_sprite_shooting = NULL;
     
     float camera_x = 0, camera_y = 0;
     int rodando = 1;
@@ -84,20 +125,56 @@ int main() {
     cenario = al_load_bitmap("assets/cenario.webp");
     bullet_sprite = al_load_bitmap("assets/bullet.png");
     jogador = player_create(100, FLOOR_Y);
-    enemy_sprite_idle = al_load_bitmap("assets/enemy1_idle.png");
-    enemy_sprite_shooting = al_load_bitmap("assets/enemy_shot.png");
 
-    if (!janela || !fila_eventos || !timer || !fonte || !cenario || !bullet_sprite || !jogador || !enemy_sprite_idle || !enemy_sprite_shooting) {
+    if (!janela || !fila_eventos || !timer || !fonte || !cenario || !bullet_sprite || !jogador) {
         printf("ERRO: Falha em um dos componentes de inicialização.\n");
         return -1;
     }
 
-    for (int i = 0; i < MAX_BULLETS; i++) { bullets[i].ativo = false; }
+    // Sprites do SOLDADO_ESPINGARDA
+    ALLEGRO_BITMAP *enemy1_sprite_idle = al_load_bitmap("assets/enemy1_idle.png");
+    ALLEGRO_BITMAP *enemy1_sprite_shooting = al_load_bitmap("assets/enemy1_shot.png");
+    ALLEGRO_BITMAP *enemy1_sprite_death = al_load_bitmap("assets/enemy1_death.png");
 
-    enemy_init(inimigos, MAX_INIMIGOS); // <-- ADICIONE - Prepara o array de inimigos
-    // Spawna alguns inimigos para teste
-    enemy_spawn(inimigos, MAX_INIMIGOS, enemy_sprite_idle, enemy_sprite_shooting, 600, FLOOR_Y);
-    enemy_spawn(inimigos, MAX_INIMIGOS, enemy_sprite_idle, enemy_sprite_shooting, 900, FLOOR_Y);
+    // Sprites do SOLDADO_ESCUDO
+    ALLEGRO_BITMAP *enemy2_sprite_idle = al_load_bitmap("assets/enemy2_idle.png");
+    ALLEGRO_BITMAP *enemy2_sprite_shooting = al_load_bitmap("assets/enemy2_shot.png");
+    ALLEGRO_BITMAP *enemy2_sprite_death = al_load_bitmap("assets/enemy2_death.png");
+
+    if (!enemy1_sprite_idle || !enemy1_sprite_shooting || !enemy1_sprite_death || !enemy2_sprite_idle || !enemy2_sprite_shooting || !enemy2_sprite_death) {
+        printf("ERRO: Falha ao carregar os sprites dos inimigos.\n");
+        return -1;
+    }
+
+    EnemyConfig config_soldado_espingarda = {
+        .tipo = SOLDADO_ESPINGARDA, .hp = 3,
+        .num_frames_parado = 6, .num_frames_atirando = 7, .num_frames_morrendo = 5,
+        .folha_sprite_parado = enemy1_sprite_idle,
+        .folha_sprite_atirando = enemy1_sprite_shooting,
+        .folha_sprite_morrendo = enemy1_sprite_death
+    };
+    EnemyConfig config_soldado_escudo = {
+        .tipo = SOLDADO_ESCUDO, .hp = 5,
+        .num_frames_parado = 6, .num_frames_atirando = 5, .num_frames_morrendo = 6,
+        .folha_sprite_parado = enemy2_sprite_idle,
+        .folha_sprite_atirando = enemy2_sprite_shooting,
+        .folha_sprite_morrendo = enemy2_sprite_death
+    };
+
+    enemy_init(inimigos, MAX_INIMIGOS);
+    
+    // --- SPAWN INICIAL ---
+    for (int i = 0; i < num_level1_spawns; i++) {
+        const EnemyConfig *config_atual = NULL;
+        if (level1_spawns[i].tipo == SOLDADO_ESPINGARDA) {
+            config_atual = &config_soldado_espingarda;
+        } else {
+            config_atual = &config_soldado_escudo;
+        }
+        enemy_spawn(inimigos, MAX_INIMIGOS, config_atual, level1_spawns[i].x, level1_spawns[i].y);
+    }
+
+    for (int i = 0; i < MAX_BULLETS; i++) { bullets[i].ativo = false; }
 
     al_set_window_title(janela, "Run 'n Gun");
     al_register_event_source(fila_eventos, al_get_keyboard_event_source());
@@ -176,10 +253,10 @@ int main() {
 
                     if (evento.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN) {
                         if (opcao_gameover_selecionada == 0) {
-                            resetar_jogo(jogador, inimigos, bullets, &camera_x, enemy_sprite_idle, enemy_sprite_shooting);
+                            resetar_jogo(jogador, inimigos, bullets, &camera_x, &config_soldado_espingarda, &config_soldado_escudo);
                             estado_atual = JOGANDO;
                         } else if (opcao_gameover_selecionada == 1) {
-                            resetar_jogo(jogador, inimigos, bullets, &camera_x, enemy_sprite_idle, enemy_sprite_shooting);
+                            resetar_jogo(jogador, inimigos, bullets, &camera_x, &config_soldado_espingarda, &config_soldado_escudo);
                             estado_atual = MENU;
                         }
                     }
@@ -189,10 +266,10 @@ int main() {
                         if (evento.keyboard.keycode == ALLEGRO_KEY_DOWN) opcao_gameover_selecionada = 1;
                         if (evento.keyboard.keycode == ALLEGRO_KEY_ENTER) {
                             if (opcao_gameover_selecionada == 0) {
-                                resetar_jogo(jogador, inimigos, bullets, &camera_x, enemy_sprite_idle, enemy_sprite_shooting);
+                                resetar_jogo(jogador, inimigos, bullets, &camera_x, &config_soldado_espingarda, &config_soldado_escudo);
                                 estado_atual = JOGANDO;
                             } else if (opcao_gameover_selecionada == 1) {
-                                resetar_jogo(jogador, inimigos, bullets, &camera_x, enemy_sprite_idle, enemy_sprite_shooting);
+                                resetar_jogo(jogador, inimigos, bullets, &camera_x, &config_soldado_espingarda, &config_soldado_escudo);
                                 estado_atual = MENU;
                             }
                         }
@@ -258,10 +335,14 @@ int main() {
                                 if (check_collision(bullet_x, bullet_y, bullet_w, bullet_h, enemy_x, enemy_y, enemy_w, enemy_h)) {
                                     bullets[i].ativo = false; 
                                     inimigos[j].hp--;
-                                    if (inimigos[j].hp <= 0) {
-                                        inimigos[j].ativo = false;
+                                    
+                                    // SE o inimigo morreu E ele ainda não estava morrendo
+                                    if (inimigos[j].hp <= 0 && inimigos[j].estado != INIMIGO_MORRENDO) {
+                                        inimigos[j].estado = INIMIGO_MORRENDO;
+                                        inimigos[j].anim_atual = inimigos[j].anim_morrendo;
+                                        animation_reset(inimigos[j].anim_morrendo);
                                     }
-                                    break; 
+                                    break;
                                 }
                             }
                         }
@@ -285,7 +366,7 @@ int main() {
                         }
                     }
 
-                    camera_x = jogador->x - LARGURA_TELA / 2.0;
+                    camera_x = jogador->x;
                     if (camera_x < 0) camera_x = 0;
 
                     int offset_x = (int)camera_x % LARGURA_MUNDO;
@@ -296,12 +377,6 @@ int main() {
                     for (int i = 0; i < MAX_BULLETS; i++) { bullet_draw(&bullets[i], bullet_sprite, camera_x, camera_y); }
                     enemy_draw(inimigos, MAX_INIMIGOS, camera_x, camera_y);
                     al_draw_textf(fonte, al_map_rgb(255, 255, 0), 10, 10, 0, "VIDA: %d", jogador->hp);
-
-                    float player_w = jogador->hitbox_largura * ESCALA;
-                    float player_h = jogador->hitbox_altura * ESCALA;
-                    float player_x = jogador->x + (jogador->hitbox_offset_x * ESCALA);
-                    float player_y = jogador->y + (jogador->hitbox_offset_y * ESCALA);
-                    al_draw_rectangle(player_x - camera_x, player_y, player_x - camera_x + player_w, player_y + player_h, al_map_rgb(0, 255, 0), 1);
 
                     break; // Fim do case JOGANDO (desenho)
                 case FIM_DE_JOGO:
@@ -331,8 +406,12 @@ int main() {
     player_destroy(jogador);
     al_destroy_bitmap(cenario);
     al_destroy_bitmap(bullet_sprite);
-    al_destroy_bitmap(enemy_sprite_idle);
-    al_destroy_bitmap(enemy_sprite_shooting);
+    al_destroy_bitmap(enemy1_sprite_idle);
+    al_destroy_bitmap(enemy1_sprite_shooting);
+    al_destroy_bitmap(enemy1_sprite_death);
+    al_destroy_bitmap(enemy2_sprite_idle);
+    al_destroy_bitmap(enemy2_sprite_shooting);
+    al_destroy_bitmap(enemy2_sprite_death);
     al_destroy_timer(timer);
     al_destroy_event_queue(fila_eventos);
     al_destroy_display(janela);

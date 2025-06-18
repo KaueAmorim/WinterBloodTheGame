@@ -15,5 +15,6 @@ typedef struct {
 Controls* controls_create();
 void controls_destroy(Controls *c);
 void controls_handle_input(Controls *c, ALLEGRO_EVENT *evento);
+void controls_reset(Controls *c);
 
 #endif
