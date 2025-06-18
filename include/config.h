@@ -10,6 +10,20 @@ typedef enum { MENU, JOGANDO, FIM_DE_JOGO, SAIR } GameState;
 #define LARGURA_CORACAO 50 // Largura desejada para o coração na tela
 #define ALTURA_CORACAO 50
 
+// --- ITENS ---
+#define MAX_ITENS 10
+
+// Tamanho VISUAL do item (como ele aparece na tela)
+#define LARGURA_VISUAL_ITEM (48 * ESCALA) // Um pouco maior na tela
+#define ALTURA_VISUAL_ITEM (48 * ESCALA)
+
+// Tamanho e Posição da HITBOX do item (para a colisão)
+#define HITBOX_ITEM_LARGURA (30 * ESCALA)
+#define HITBOX_ITEM_ALTURA (24 * ESCALA)
+#define HITBOX_ITEM_OFFSET_X (4 * ESCALA) 
+#define HITBOX_ITEM_OFFSET_Y (12 * ESCALA)
+// -------------
+
 // --- JOGADOR ---
 #define ESCALA 2.0f 
 #define ALTURA_JOGADOR_VISUAL (128 * ESCALA)

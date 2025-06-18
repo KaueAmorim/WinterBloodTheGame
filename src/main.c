@@ -10,6 +10,7 @@
 #include "player.h"
 #include "bullet.h"
 #include "enemy.h"
+#include "item.h"
 
 // Struct para guardar os dados de spawn de um inimigo
 typedef struct {
@@ -105,6 +106,8 @@ int main() {
     Player *jogador = NULL;
     Enemy inimigos[MAX_INIMIGOS];
     ALLEGRO_BITMAP *heart_sprite = NULL;
+    ALLEGRO_BITMAP *item_sprite = NULL;
+    Item itens[MAX_ITENS];
     
     float camera_x = 0, camera_y = 0;
     int rodando = 1;
@@ -122,9 +125,10 @@ int main() {
     cenario = al_load_bitmap("assets/cenario.webp");
     bullet_sprite = al_load_bitmap("assets/bullet.png");
     heart_sprite = al_load_bitmap("assets/heart.png");
+    item_sprite = al_load_bitmap("assets/item.png");
     jogador = player_create(100, FLOOR_Y);
 
-    if (!janela || !fila_eventos || !timer || !fonte || !cenario || !bullet_sprite || !jogador || !heart_sprite) {
+    if (!janela || !fila_eventos || !timer || !fonte || !cenario || !bullet_sprite || !jogador || !heart_sprite || !item_sprite) {
         printf("ERRO: Falha em um dos componentes de inicialização.\n");
         return -1;
     }
@@ -173,6 +177,9 @@ int main() {
     }
 
     for (int i = 0; i < MAX_BULLETS; i++) { bullets[i].ativo = false; }
+
+    item_init(itens, MAX_ITENS);
+    item_spawn(itens, MAX_ITENS, VODKA, item_sprite, 3600, FLOOR_Y + ALTURA_JOGADOR_VISUAL - ALTURA_VISUAL_ITEM);
 
     al_set_window_title(janela, "Run 'n Gun");
     al_register_event_source(fila_eventos, al_get_keyboard_event_source());
@@ -364,6 +371,32 @@ int main() {
                         }
                     }
 
+                    // --- LÓGICA DE COLISÃO DO JOGADOR COM ITENS ---
+                    for (int i = 0; i < MAX_ITENS; i++) {
+                        if (itens[i].ativo) {
+                    
+                            // Pega a hitbox atual do jogador
+                            float player_hitbox_x = jogador->x + (jogador->hitbox_offset_x * ESCALA);
+                            float player_hitbox_y = jogador->y + (jogador->hitbox_offset_y * ESCALA);
+                            float player_hitbox_w = jogador->hitbox_largura * ESCALA;
+                            float player_hitbox_h = jogador->hitbox_altura * ESCALA;
+
+                            // Calcula a posição e o tamanho da hitbox do item
+                            float item_hitbox_x = itens[i].x + HITBOX_ITEM_OFFSET_X;
+                            float item_hitbox_y = itens[i].y + HITBOX_ITEM_OFFSET_Y;
+                            float item_hitbox_w = HITBOX_ITEM_LARGURA;
+                            float item_hitbox_h = HITBOX_ITEM_ALTURA;
+
+                            // Verifica a colisão
+                            if (check_collision(player_hitbox_x, player_hitbox_y, player_hitbox_w, player_hitbox_h, item_hitbox_x, item_hitbox_y, item_hitbox_w, item_hitbox_h)) {
+                                if (itens[i].tipo == VODKA) {
+                                    jogador->hp += 3;
+                                    itens[i].ativo = false; // Desativa o item para não ser pego de novo
+                                }
+                            }
+                        }
+                    }
+
                     camera_x = jogador->x;
                     if (camera_x < 0) camera_x = 0;
 
@@ -374,6 +407,7 @@ int main() {
                     player_draw(jogador, camera_x, camera_y);
                     for (int i = 0; i < MAX_BULLETS; i++) { bullet_draw(&bullets[i], bullet_sprite, camera_x, camera_y); }
                     enemy_draw(inimigos, MAX_INIMIGOS, camera_x, camera_y);
+                    item_draw(itens, MAX_ITENS, camera_x, camera_y);
                     
                     if (heart_sprite) {
                         int padding = 5; // Espaçamento entre os corações
@@ -423,6 +457,7 @@ int main() {
     enemy_destroy_animations(inimigos, MAX_INIMIGOS);
     al_destroy_font(fonte);
     player_destroy(jogador);
+    al_destroy_bitmap(item_sprite);
     al_destroy_bitmap(cenario);
     al_destroy_bitmap(bullet_sprite);
     al_destroy_bitmap(heart_sprite);
