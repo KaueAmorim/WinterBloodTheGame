@@ -93,57 +93,52 @@ void enemy_update(Enemy *e, Player *p, Bullet bullets[], int max_bullets) {
             else {
                 float distancia = fabs(p->x - e->x);
                 if (distancia < LARGURA_TELA) {
-                    // --- NOVA LÓGICA DE DECISÃO DE ATAQUE ---
-                    int chance = rand() % 100; // Gera um número de 0a 99
-
-                    // 30% de chance de dar um tiro duplo
-                    if (chance < 30) {
-                        int slots_livres[2];
-                        int slots_encontrados = 0;
-                        // Procura por DOIS slots de projéteis livres
-                        for (int i = 0; i < max_bullets && slots_encontrados < 2; i++) {
-                            if (!bullets[i].ativo) {
-                                slots_livres[slots_encontrados++] = i;
+                    // --- NOVA LÓGICA DE ATAQUE BASEADA NO TIPO ---
+                    switch(e->tipo) {
+                        case SOLDADO_ESCUDO:
+                            // Lógica do tiro único e rápido
+                            for (int i = 0; i < max_bullets; i++) {
+                                if (!bullets[i].ativo) {
+                                    float start_x, start_y;
+                                    if(e->direcao == 1) start_x = e->x + (OFFSET_TIRO_INIMIGO_X * ESCALA);
+                                    else start_x = e->x + ((e->frame_largura - OFFSET_TIRO_INIMIGO_X) * ESCALA);
+                                    start_y = e->y + (OFFSET_TIRO_INIMIGO_Y * ESCALA);
+                                
+                                    // Dispara com a velocidade rápida
+                                    bullet_fire(&bullets[i], start_x, start_y, e->direcao, VELOCIDADE_PROJETIL_RAPIDO, OWNER_ENEMY);
+                                
+                                    e->estado = INIMIGO_ATIRANDO;
+                                    e->anim_atual = e->anim_atirando;
+                                    animation_reset(e->anim_atual);
+                                    e->cooldown_tiro = 2.5f; // Cooldown um pouco maior
+                                    break;
+                                }
                             }
-                        }
-                    
-                        // Se encontrou dois slots, dispara o tiro duplo
-                        if (slots_encontrados == 2) {
-                            float start_x;
-                            if(e->direcao == 1) start_x = e->x + (OFFSET_TIRO_INIMIGO_X * ESCALA);
-                            else start_x = e->x + ((e->frame_largura - OFFSET_TIRO_INIMIGO_X) * ESCALA);
+                            break;
+                        case SOLDADO_ESPINGARDA:
+                            // Lógica do tiro duplo
+                            int slots_livres[2];
+                            int slots_encontrados = 0;
+                            for (int i = 0; i < max_bullets && slots_encontrados < 2; i++) {
+                                if (!bullets[i].ativo) slots_livres[slots_encontrados++] = i;
+                            }
 
-                            // Dispara dois projéteis em alturas diferentes
-                            bullet_fire(&bullets[slots_livres[0]], start_x, e->y + (OFFSET_TIRO_DUPLO_Y1 * ESCALA), e->direcao, OWNER_ENEMY);
-                            bullet_fire(&bullets[slots_livres[1]], start_x, e->y + (OFFSET_TIRO_DUPLO_Y2 * ESCALA), e->direcao, OWNER_ENEMY);
-
-                            // Ativa o estado de tiro e um cooldown maior
-                            e->estado = INIMIGO_ATIRANDO;
-                            e->anim_atual = e->anim_atirando;
-                            animation_reset(e->anim_atual);
-                            e->cooldown_tiro = 3.0f; 
-                        }
-                    }
-                    else {
-                        // Procura por UM slot de projétil livre
-                        for (int i = 0; i < max_bullets; i++) {
-                            if (!bullets[i].ativo) {
+                            if (slots_encontrados == 2) {
                                 float start_x;
                                 if(e->direcao == 1) start_x = e->x + (OFFSET_TIRO_INIMIGO_X * ESCALA);
                                 else start_x = e->x + ((e->frame_largura - OFFSET_TIRO_INIMIGO_X) * ESCALA);
 
-                                float start_y = e->y + (OFFSET_TIRO_INIMIGO_Y * ESCALA);
-                            
-                                bullet_fire(&bullets[i], start_x, start_y, e->direcao, OWNER_ENEMY);
-                            
+                                // Dispara dois projéteis com velocidade normal
+                                bullet_fire(&bullets[slots_livres[0]], start_x, e->y + (OFFSET_TIRO_DUPLO_Y1 * ESCALA), e->direcao, VELOCIDADE_PROJETIL, OWNER_ENEMY);
+                                bullet_fire(&bullets[slots_livres[1]], start_x, e->y + (OFFSET_TIRO_DUPLO_Y2 * ESCALA), e->direcao, VELOCIDADE_PROJETIL, OWNER_ENEMY);
+
                                 e->estado = INIMIGO_ATIRANDO;
                                 e->anim_atual = e->anim_atirando;
                                 animation_reset(e->anim_atual);
-                            
-                                e->cooldown_tiro = 2.0f; // Cooldown normal
-                                break;
+                                e->cooldown_tiro = 3.0f;
                             }
-                        }
+                            break;
+                    
                     }
                 }
             }

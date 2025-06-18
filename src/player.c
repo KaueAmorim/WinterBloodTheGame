@@ -238,7 +238,7 @@ void player_fire(Player *p, Bullet bullets[], int max_bullets) {
                 start_y = p->y + (offset_y * ESCALA);
                 
                 // Dispara o projétil, especificando o dono
-                bullet_fire(&bullets[i], start_x, start_y, p->direcao, OWNER_PLAYER);
+                bullet_fire(&bullets[i], start_x, start_y, p->direcao, VELOCIDADE_PROJETIL, OWNER_PLAYER);
                 
                 // Reinicia o cooldown do tiro
                 p->cooldown_tiro = 0.3f; 

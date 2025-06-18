@@ -2,11 +2,11 @@
 #include "config.h" 
 
 // Ao atirar, damos ao projétil um tempo de vida
-void bullet_fire(Bullet *b, float start_x, float start_y, int direction, BulletOwner owner) {
+void bullet_fire(Bullet *b, float start_x, float start_y, int direction, float speed, BulletOwner owner) {
     b->ativo = true;
     b->x = start_x;
     b->y = start_y;
-    b->vel_x = VELOCIDADE_PROJETIL * direction;
+    b->vel_x = speed * direction;
     b->direcao = direction;
     b->owner = owner;
 }

@@ -38,6 +38,7 @@ typedef enum { MENU, JOGANDO, FIM_DE_JOGO, SAIR } GameState;
 // --- PROJÉTEIS ---
 #define MAX_BULLETS 20
 #define VELOCIDADE_PROJETIL 12.0f
+#define VELOCIDADE_PROJETIL_RAPIDO 18.0f
 #define LARGURA_BULLET 24
 #define ALTURA_BULLET 10
 

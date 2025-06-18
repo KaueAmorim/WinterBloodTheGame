@@ -18,7 +18,7 @@ typedef struct Bullet {
     BulletOwner owner;
 } Bullet;
 
-void bullet_fire(Bullet *b, float start_x, float start_y, int direction, BulletOwner owner);
+void bullet_fire(Bullet *b, float start_x, float start_y, int direction, float speed, BulletOwner owner);
 void bullet_update(Bullet *b, float camera_x);
 void bullet_draw(Bullet *b, ALLEGRO_BITMAP *sprite, float camera_x, float camera_y);
 

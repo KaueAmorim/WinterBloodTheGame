@@ -1,7 +1,5 @@
 #include <stdio.h>
 #include <stdbool.h>
-#include <stdlib.h>
-#include <time.h>
 #include <allegro5/allegro5.h>
 #include <allegro5/allegro_image.h>
 #include <allegro5/allegro_font.h>
@@ -93,8 +91,6 @@ void inicializar_allegro() {
 }
 
 int main() {
-
-    srand(time(NULL));
 
     inicializar_allegro();
 
