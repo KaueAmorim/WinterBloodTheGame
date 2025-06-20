@@ -83,4 +83,16 @@ typedef enum { MENU, JOGANDO, FIM_DE_JOGO, SAIR } GameState;
 #define OFFSET_TIRO_DUPLO_Y1 65 // Posição do tiro de cima
 #define OFFSET_TIRO_DUPLO_Y2 85 // Posição do tiro de baixo
 
+// --- CHEFE (BOSS) ---
+#define NUM_FRAMES_BOSS_MOVING 4 // Based on your image
+#define VELOCIDADE_BOSS 2.0f // Adjust as needed
+#define BOSS_HITBOX_LARGURA (120 * ESCALA) // Adjust as needed
+#define BOSS_HITBOX_ALTURA (150 * ESCALA) // Adjust as needed
+#define BOSS_HITBOX_OFFSET_X (36 * ESCALA) // Adjust based on sprite
+#define BOSS_HITBOX_OFFSET_Y (21 * ESCALA) // Adjust based on sprite
+#define BOSS_OFFSET_TIRO_X 140 // Adjust based on your sprite
+#define BOSS_OFFSET_TIRO_Y1 60  // Adjust based on your sprite
+#define BOSS_OFFSET_TIRO_Y2 90  // Adjust based on your sprite
+#define BOSS_OFFSET_TIRO_Y3 120 // Adjust based on your sprite
+
 #endif
