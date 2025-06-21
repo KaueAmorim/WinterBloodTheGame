@@ -45,7 +45,7 @@ void boss_spawn(Boss *boss, float x, ALLEGRO_BITMAP *sprite, ALLEGRO_BITMAP *fx_
     boss->fx_tiro_ativo = false;
 }
 
-void boss_update(Boss *boss, Player *p, Bullet bullets[], int max_bullets) {
+void boss_update(Boss *boss, struct Player *p, struct Bullet bullets[], int max_bullets) {
     if (!boss->ativo) return;
 
     // Se o efeito de tiro estiver ativo, atualiza sua animação
@@ -96,9 +96,9 @@ void boss_update(Boss *boss, Player *p, Bullet bullets[], int max_bullets) {
             else start_x = boss->x + ((boss->frame_largura - BOSS_OFFSET_TIRO_X) * ESCALA);
 
             // Dispara os 3 projéteis
-            bullet_fire(&bullets[slots_livres[0]], start_x, boss->y + (BOSS_OFFSET_TIRO_Y1 * ESCALA), boss->direcao, VELOCIDADE_PROJETIL, OWNER_ENEMY);
-            bullet_fire(&bullets[slots_livres[1]], start_x, boss->y + (BOSS_OFFSET_TIRO_Y2 * ESCALA), boss->direcao, VELOCIDADE_PROJETIL, OWNER_ENEMY);
-            bullet_fire(&bullets[slots_livres[2]], start_x, boss->y + (BOSS_OFFSET_TIRO_Y3 * ESCALA), boss->direcao, VELOCIDADE_PROJETIL, OWNER_ENEMY);
+            bullet_fire(&bullets[slots_livres[0]], start_x, boss->y + (BOSS_OFFSET_TIRO_Y1 * ESCALA), boss->direcao, VELOCIDADE_PROJETIL, ENEMY);
+            bullet_fire(&bullets[slots_livres[1]], start_x, boss->y + (BOSS_OFFSET_TIRO_Y2 * ESCALA), boss->direcao, VELOCIDADE_PROJETIL, ENEMY);
+            bullet_fire(&bullets[slots_livres[2]], start_x, boss->y + (BOSS_OFFSET_TIRO_Y3 * ESCALA), boss->direcao, VELOCIDADE_PROJETIL, ENEMY);
 
             // Reinicia o cooldown
             boss->cooldown_tiro = 3.5f;

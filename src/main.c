@@ -1,10 +1,8 @@
 #include <stdio.h>
-#include <stdbool.h>
 #include <allegro5/allegro5.h>
 #include <allegro5/allegro_image.h>
 #include <allegro5/allegro_font.h>
 #include <allegro5/allegro_ttf.h>
-#include <allegro5/allegro_primitives.h>
 
 #include "boss.h"
 #include "config.h" 
@@ -21,7 +19,7 @@ typedef struct {
 } EnemySpawnInfo;
 
 typedef struct {
-    ItemType tipo;
+    enum ItemType tipo;
     float x;
     float y;
 } ItemSpawnInfo;
@@ -41,7 +39,7 @@ static const int num_level1_spawns = sizeof(level1_spawns) / sizeof(level1_spawn
 
 
 static const ItemSpawnInfo level1_items[] = {
-    {VODKA, 3600, FLOOR_Y + ALTURA_JOGADOR_VISUAL - ALTURA_VISUAL_ITEM}
+    {VODKA, 3600, FLOOR_Y + ALTURA_JOGADOR_VISUAL - 96}
 };
 
 // Calcula automaticamente quantos itens temos na lista
@@ -49,18 +47,18 @@ static const int num_level1_items = sizeof(level1_items) / sizeof(level1_items[0
 
 
 // Função que verifica se dois retângulos (r1 e r2) estão colidindo
-bool check_collision(float r1x, float r1y, float r1w, float r1h, float r2x, float r2y, float r2w, float r2h) {
+int check_collision(float r1x, float r1y, float r1w, float r1h, float r2x, float r2y, float r2w, float r2h) {
     if (r1x + r1w >= r2x && // Borda direita de r1 >= Borda esquerda de r2
         r1x <= r2x + r2w && // Borda esquerda de r1 <= Borda direita de r2
         r1y + r1h >= r2y && // Borda de baixo de r1 >= Borda de cima de r2
         r1y <= r2y + r2h) { // Borda de cima de r1 <= Borda de baixo de r2
-        return true;
+        return 1;
     }
-    return false;
+    return 0;
 }
 
 // A assinatura da função agora precisa de todos os ponteiros para os sprites e configs
-void resetar_jogo(Player *p, Enemy inimigos[], Bullet bullets[], Item itens[], Boss *chefe, float *camera_x, int *inimigos_derrotados, int *vitoria, 
+void resetar_jogo(struct Player *p, Enemy inimigos[], struct Bullet bullets[], struct Item itens[], Boss *chefe, float *camera_x, int *inimigos_derrotados, int *vitoria, 
                 const EnemyConfig *config_soldado_espingarda, const EnemyConfig *config_soldado_escudo, ALLEGRO_BITMAP *item_heart_sprite) {
     
     printf("Resetando o jogo...\n");
@@ -84,7 +82,7 @@ void resetar_jogo(Player *p, Enemy inimigos[], Bullet bullets[], Item itens[], B
 
     // 3. Limpa todos os projéteis ativos
     for (int i = 0; i < MAX_BULLETS; i++) {
-        bullets[i].ativo = false;
+        bullets[i].ativo = 0;
     }
 
     // 4. Limpa e recria os Inimigos Normais a partir do mapa da fase
@@ -134,14 +132,14 @@ int main() {
 
     ALLEGRO_FONT *fonte = al_load_font("assets/PressStart2P-Regular.ttf", 50, 0);
     ALLEGRO_FONT *titulo_fonte = al_load_font("assets/PressStart2P-Regular.ttf", 62, 0);
-    
-    Bullet bullets[MAX_BULLETS];
+
+    struct Bullet bullets[MAX_BULLETS];
     ALLEGRO_BITMAP *bullet_sprite = al_load_bitmap("assets/bullet.png");
 
-    Player *jogador = player_create(100, FLOOR_Y);
+    struct Player *jogador = player_create(100, FLOOR_Y);
     Enemy inimigos[MAX_INIMIGOS];
 
-    Item itens[MAX_ITENS];
+    struct Item itens[MAX_ITENS];
     ALLEGRO_BITMAP *item_sprite = al_load_bitmap("assets/item.png");
 
     Boss chefe;
@@ -197,7 +195,7 @@ int main() {
         enemy_spawn(inimigos, MAX_INIMIGOS, config_atual, level1_spawns[i].x, level1_spawns[i].y);
     }
 
-    for (int i = 0; i < MAX_BULLETS; i++) { bullets[i].ativo = false; }
+    for (int i = 0; i < MAX_BULLETS; i++) { bullets[i].ativo = 0; }
 
     item_init(itens, MAX_ITENS);
     for (int i = 0; i < num_level1_items; i++) {
@@ -224,15 +222,14 @@ int main() {
     al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA);
     al_register_event_source(fila_eventos, al_get_mouse_event_source());
 
+    ALLEGRO_EVENT evento;
     al_start_timer(timer);
 
     while (rodando) {
-        ALLEGRO_EVENT evento;
         al_wait_for_event(fila_eventos, &evento);
 
-        // --- Eventos Globais ---
         if (evento.type == ALLEGRO_EVENT_DISPLAY_CLOSE) {
-            estado_atual = SAIR; // Em vez de fechar direto, muda para o estado de sair
+            estado_atual = SAIR;
         }
 
         // --- Lógica de Estados ---
@@ -355,7 +352,7 @@ int main() {
                         float bullet_w = LARGURA_BULLET, bullet_h = ALTURA_BULLET;
 
                         // VERIFICA SE O PROJÉTIL DO JOGADOR ACERTOU UM INIMIGO
-                        if (bullets[i].owner == OWNER_PLAYER) {
+                        if (bullets[i].owner == PLAYER) {
                             for (int j = 0; j < MAX_INIMIGOS; j++) {
                                 if (!inimigos[j].ativo) continue;
 
@@ -366,7 +363,7 @@ int main() {
                                 float enemy_y = inimigos[j].y + (HITBOX_INIMIGO_OFFSET_Y * ESCALA);
 
                                 if (check_collision(bullet_x, bullet_y, bullet_w, bullet_h, enemy_x, enemy_y, enemy_w, enemy_h)) {
-                                    bullets[i].ativo = false; 
+                                    bullets[i].ativo = 0; 
                                     inimigos[j].hp--;
                                     
                                     // SE o inimigo morreu E ele ainda não estava morrendo
@@ -389,13 +386,13 @@ int main() {
                                 // Verifica a colisão
                                 if (check_collision(bullet_x, bullet_y, bullet_w, bullet_h, boss_hitbox_x, boss_hitbox_y, chefe.hitbox_largura, chefe.hitbox_altura)) {
                                 
-                                    bullets[i].ativo = false; // Projétil desaparece
+                                    bullets[i].ativo = 0; // Projétil desaparece
                                     chefe.hp--;               // Chefe perde vida
 
                                     // --- NOVA LÓGICA DE DERROTA ---
                                     // Se a vida do chefe chegar a zero...
                                     if (chefe.hp <= 0) {
-                                        chefe.ativo = false; // ...ele é simplesmente desativado.
+                                        chefe.ativo = 0; // ...ele é simplesmente desativado.
                                         estado_atual = FIM_DE_JOGO; // Muda o estado do jogo para "Fim de Jogo"
                                         vitoria = 1; // Marca que o jogador venceu
                                         printf("CHEFE DERROTADO!\\n");
@@ -404,7 +401,7 @@ int main() {
                             }
                         }
                         // VERIFICA SE O PROJÉTIL DO INIMIGO ACERTOU O JOGADOR
-                        else if (bullets[i].owner == OWNER_ENEMY) {
+                        else if (bullets[i].owner == ENEMY) {
 
                             // --- LÓGICA DA HITBOX DO JOGADOR ---
                             float player_w = jogador->hitbox_largura * ESCALA;
@@ -413,7 +410,7 @@ int main() {
                             float player_y = jogador->y + (jogador->hitbox_offset_y * ESCALA);
 
                             if (check_collision(bullet_x, bullet_y, bullet_w, bullet_h, player_x, player_y, player_w, player_h)) {
-                                bullets[i].ativo = false;
+                                bullets[i].ativo = 0;
                                 jogador->hp--;
                                 if (jogador->hp <= 0) {
                                     estado_atual = FIM_DE_JOGO;
@@ -443,7 +440,7 @@ int main() {
                             if (check_collision(player_hitbox_x, player_hitbox_y, player_hitbox_w, player_hitbox_h, item_hitbox_x, item_hitbox_y, item_hitbox_w, item_hitbox_h)) {
                                 if (itens[i].tipo == VODKA) {
                                     jogador->hp += 3;
-                                    itens[i].ativo = false; // Desativa o item para não ser pego de novo
+                                    itens[i].ativo = 0; // Desativa o item para não ser pego de novo
                                 }
                             }
                         }

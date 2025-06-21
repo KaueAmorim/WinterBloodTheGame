@@ -58,7 +58,7 @@ void enemy_spawn(Enemy inimigos[], int max_inimigos, const EnemyConfig *config, 
     }
 }
 
-void enemy_update(Enemy *e, Player *p, Bullet bullets[], int max_bullets) {
+void enemy_update(Enemy *e, struct Player *p, struct Bullet bullets[], int max_bullets) {
     if (!e->ativo || !e->anim_atual) return; // Trava de segurança
 
     // A lógica de animação agora é sempre chamada, o TAD cuida do resto
@@ -105,7 +105,7 @@ void enemy_update(Enemy *e, Player *p, Bullet bullets[], int max_bullets) {
                                     start_y = e->y + (OFFSET_TIRO_INIMIGO_Y * ESCALA);
                                 
                                     // Dispara com a velocidade rápida
-                                    bullet_fire(&bullets[i], start_x, start_y, e->direcao, VELOCIDADE_PROJETIL_RAPIDO, OWNER_ENEMY);
+                                    bullet_fire(&bullets[i], start_x, start_y, e->direcao, VELOCIDADE_PROJETIL_RAPIDO, ENEMY);
                                 
                                     e->estado = INIMIGO_ATIRANDO;
                                     e->anim_atual = e->anim_atirando;
@@ -129,8 +129,8 @@ void enemy_update(Enemy *e, Player *p, Bullet bullets[], int max_bullets) {
                                 else start_x = e->x + ((e->frame_largura - OFFSET_TIRO_INIMIGO_X) * ESCALA);
 
                                 // Dispara dois projéteis com velocidade normal
-                                bullet_fire(&bullets[slots_livres[0]], start_x, e->y + (OFFSET_TIRO_DUPLO_Y1 * ESCALA), e->direcao, VELOCIDADE_PROJETIL, OWNER_ENEMY);
-                                bullet_fire(&bullets[slots_livres[1]], start_x, e->y + (OFFSET_TIRO_DUPLO_Y2 * ESCALA), e->direcao, VELOCIDADE_PROJETIL, OWNER_ENEMY);
+                                bullet_fire(&bullets[slots_livres[0]], start_x, e->y + (OFFSET_TIRO_DUPLO_Y1 * ESCALA), e->direcao, VELOCIDADE_PROJETIL, ENEMY);
+                                bullet_fire(&bullets[slots_livres[1]], start_x, e->y + (OFFSET_TIRO_DUPLO_Y2 * ESCALA), e->direcao, VELOCIDADE_PROJETIL, ENEMY);
 
                                 e->estado = INIMIGO_ATIRANDO;
                                 e->anim_atual = e->anim_atirando;

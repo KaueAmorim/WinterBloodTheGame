@@ -2,19 +2,25 @@
 #define CONTROLS_H
 
 #include <allegro5/allegro5.h>
-#include <stdbool.h>
 
-typedef struct {
-    bool cima;
-    bool baixo;
-    bool esquerda;
-    bool direita;
-    bool tiro;
-} Controls;
+struct Controls {
+    unsigned int cima;
+    unsigned int baixo;
+    unsigned int esquerda;
+    unsigned int direita;
+    unsigned int tiro;
+};
 
-Controls* controls_create();
-void controls_destroy(Controls *c);
-void controls_handle_input(Controls *c, ALLEGRO_EVENT *evento);
-void controls_reset(Controls *c);
+// Cria uma nova estrutura de controles.
+struct Controls* controls_create();
+
+// Libera a memória alocada para os controles.
+void controls_destroy(struct Controls *c);
+
+// Processa os eventos de entrada do teclado e atualiza os estados de controle.
+void controls_handle_input(struct Controls *c, ALLEGRO_EVENT *evento);
+
+// Reseta todos os estados de controle para 'false'.
+void controls_reset(struct Controls *c);
 
 #endif

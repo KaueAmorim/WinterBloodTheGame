@@ -22,9 +22,9 @@ typedef struct {
     ALLEGRO_BITMAP *sprite_sheet;
     ALLEGRO_BITMAP *sprite_fx_tiro;
 
-    Animation *anim_moving;
-    Animation *anim_atual;
-    Animation *anim_fx_tiro;
+    struct Animation *anim_moving;
+    struct Animation *anim_atual;
+    struct Animation *anim_fx_tiro;
 
     int frame_largura, frame_altura;
     float cooldown_tiro;
@@ -36,7 +36,7 @@ typedef struct {
 
 void boss_init(Boss *boss);
 void boss_spawn(Boss *boss, float x, ALLEGRO_BITMAP *sprite, ALLEGRO_BITMAP *fx_sprite);
-void boss_update(Boss *boss, Player *p, Bullet bullets[], int max_bullets);
+void boss_update(Boss *boss, struct Player *p, struct Bullet bullets[], int max_bullets);
 void boss_draw(Boss *boss, float camera_x, float camera_y);
 void boss_destroy(Boss *boss);
 

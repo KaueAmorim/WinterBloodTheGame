@@ -1,17 +1,23 @@
 #include "player.h"
 #include "config.h"
 
-Player* player_create(float x, float y) {
-    Player *p = (Player*) calloc(1, sizeof(Player));
-    if (!p) return NULL;
+struct Player* player_create(float x, float y) {
+    
+    struct Player *p;
+
+    if(!(p = malloc(sizeof(struct Player)))){
+        return NULL;
+    }
 
     p->x = x;
     p->y = y;
-    p->direcao = 1;
+    p->vel_x = 0;
+    p->vel_y = 0;
     p->hp = 5;
+    p->direcao = 1;
+    p->no_chao = true;
     p->frame_largura = 128;
     p->frame_altura = 128;
-    p->no_chao = true;
     p->controles = controls_create();
 
     if (!p->controles) {
@@ -49,7 +55,7 @@ Player* player_create(float x, float y) {
     return p;
 }
 
-void player_destroy(Player *p) {
+void player_destroy(struct Player *p) {
     if (p) {
         animation_destroy(p->anim_parado);
         animation_destroy(p->anim_correndo);
@@ -70,7 +76,7 @@ void player_destroy(Player *p) {
     }
 }
 
-void player_update(Player *p) {
+void player_update(struct Player *p) {
     EstadoJogador estado_anterior = p->estado;
 
     // Se o jogador está no meio da animação de tiro, ela tem prioridade
@@ -171,7 +177,7 @@ void player_update(Player *p) {
     }
 }
 
-void player_draw(Player *p, float camera_x, float camera_y) {
+void player_draw(struct Player *p, float camera_x, float camera_y) {
     if (!p) return;
 
     ALLEGRO_BITMAP *folha_atual = NULL;
@@ -196,7 +202,7 @@ void player_draw(Player *p, float camera_x, float camera_y) {
     }
 }
 
-void player_fire(Player *p, Bullet bullets[], int max_bullets) {
+void player_fire(struct Player *p, struct Bullet bullets[], int max_bullets) {
     // Só pode atirar se a tecla estiver pressionada E o cooldown tiver zerado
     if (p->controles->tiro && p->cooldown_tiro <= 0) {
         
@@ -238,7 +244,7 @@ void player_fire(Player *p, Bullet bullets[], int max_bullets) {
                 start_y = p->y + (offset_y * ESCALA);
                 
                 // Dispara o projétil, especificando o dono
-                bullet_fire(&bullets[i], start_x, start_y, p->direcao, VELOCIDADE_PROJETIL, OWNER_PLAYER);
+                bullet_fire(&bullets[i], start_x, start_y, p->direcao, VELOCIDADE_PROJETIL, PLAYER);
                 
                 // Reinicia o cooldown do tiro
                 p->cooldown_tiro = 0.3f; 

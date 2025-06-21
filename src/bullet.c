@@ -1,37 +1,37 @@
 #include "bullet.h"
 #include "config.h" 
 
-// Ao atirar, damos ao projétil um tempo de vida
-void bullet_fire(Bullet *b, float start_x, float start_y, int direction, float speed, BulletOwner owner) {
-    b->ativo = true;
+void bullet_fire(struct Bullet *b, float start_x, float start_y, int direction, float speed, enum BulletOwner owner) {
     b->x = start_x;
     b->y = start_y;
     b->vel_x = speed * direction;
+    b->ativo = 1;
     b->direcao = direction;
     b->owner = owner;
 }
 
-// A função agora recebe camera_x para saber onde está a tela
-void bullet_update(Bullet *b, float camera_x) {
+void bullet_update(struct Bullet *b, float camera_x) {
     if (b->ativo) {
-        // 1. Move o projétil normalmente
+        
+        // Física do Movimento
         b->x += b->vel_x;
         
-        // 2. Verifica se a posição do projétil está fora da tela
-        // Adicionamos uma margem de segurança para garantir que ele já sumiu
+        // Lógica de "Limpeza"
         float margem = 100.0f; 
 
+        // Verificação de Limites
         if (b->x < camera_x - margem || b->x > camera_x + LARGURA_TELA + margem) {
-            b->ativo = false; // Desativa o projétil
+            b->ativo = 0;
         }
     }
 }
-void bullet_draw(Bullet *b, ALLEGRO_BITMAP *sprite, float camera_x, float camera_y) {
+
+void bullet_draw(struct Bullet *b, ALLEGRO_BITMAP *sprite, float camera_x, float camera_y) {
     if (b->ativo) {
-        // Verifica a direção e define a flag de inversão se necessário
+        
+        // Lógica de Inversão (Espelhamento)
         int flags = (b->direcao == -1) ? ALLEGRO_FLIP_HORIZONTAL : 0;
 
-        // Passa a flag para a função de desenho
         al_draw_bitmap(sprite, b->x - camera_x, b->y - camera_y, flags);
     }
 }

@@ -45,10 +45,10 @@ typedef struct {
     ALLEGRO_BITMAP *folha_sprite_morrendo;
 
     // Animações
-    Animation *anim_parado;
-    Animation *anim_atirando;
-    Animation *anim_morrendo;
-    Animation *anim_atual;
+    struct Animation *anim_parado;
+    struct Animation *anim_atirando;
+    struct Animation *anim_morrendo;
+    struct Animation *anim_atual;
 
     int frame_largura, frame_altura;
 
@@ -59,7 +59,7 @@ typedef struct {
 
 void enemy_init(Enemy inimigos[], int max_inimigos);
 void enemy_spawn(Enemy inimigos[], int max_inimigos, const EnemyConfig *config, float x, float y);
-void enemy_update(Enemy *e, Player *p, Bullet bullets[], int max_bullets);
+void enemy_update(Enemy *e, struct Player *p, struct Bullet bullets[], int max_bullets);
 void enemy_draw(Enemy inimigos[], int max_inimigos, float camera_x, float camera_y);
 void enemy_destroy_animations(Enemy inimigos[], int max_inimigos);
 
