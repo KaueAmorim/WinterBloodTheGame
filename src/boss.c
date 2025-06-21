@@ -8,17 +8,16 @@
 void boss_init(Boss *boss) {
     boss->ativo = false;
     boss->anim_moving = NULL;
+    boss->anim_fx_tiro = NULL;
 }
 
 void boss_destroy(Boss *boss) {
     animation_destroy(boss->anim_moving);
+    animation_destroy(boss->anim_fx_tiro);
 }
 
-void boss_spawn(Boss *boss, float x, ALLEGRO_BITMAP *sprite) {
+void boss_spawn(Boss *boss, float x, ALLEGRO_BITMAP *sprite, ALLEGRO_BITMAP *fx_sprite) {
     if (boss->ativo) return;
-
-    printf("CHEFE APARECEU!\\n");
-    fflush(stdout);
 
     boss->ativo = true;
     boss->x = x;
@@ -37,14 +36,26 @@ void boss_spawn(Boss *boss, float x, ALLEGRO_BITMAP *sprite) {
     boss->hitbox_offset_y = BOSS_HITBOX_OFFSET_Y;
 
     boss->sprite_sheet = sprite;
+    boss->sprite_fx_tiro = fx_sprite;
 
     boss->anim_moving = animation_create(NUM_FRAMES_BOSS_MOVING, 5.0f);
+    boss->anim_fx_tiro = animation_create(NUM_FRAMES_FX_TIRO_CHEFE, FPS_FX_TIRO_CHEFE);
     boss->anim_atual = boss->anim_moving;
-    boss->cooldown_tiro = 2.0f; // Initial cooldown
+    boss->cooldown_tiro = 2.0f;
+    boss->fx_tiro_ativo = false;
 }
 
 void boss_update(Boss *boss, Player *p, Bullet bullets[], int max_bullets) {
     if (!boss->ativo) return;
+
+    // Se o efeito de tiro estiver ativo, atualiza sua animação
+    if (boss->fx_tiro_ativo) {
+        animation_update(boss->anim_fx_tiro);
+        // Se a animação do efeito terminou, desativa
+        if (boss->anim_fx_tiro->frame_atual >= boss->anim_fx_tiro->num_frames - 1) {
+            boss->fx_tiro_ativo = false;
+        }
+    }
 
     // A animação de movimento está sempre tocando
     animation_update(boss->anim_atual);
@@ -77,6 +88,9 @@ void boss_update(Boss *boss, Player *p, Bullet bullets[], int max_bullets) {
         }
 
         if (slots_encontrados == 3) {
+
+            boss->fx_tiro_ativo = true;
+            animation_reset(boss->anim_fx_tiro);
             float start_x;
             if(boss->direcao == 1) start_x = boss->x + (BOSS_OFFSET_TIRO_X * ESCALA);
             else start_x = boss->x + ((boss->frame_largura - BOSS_OFFSET_TIRO_X) * ESCALA);
@@ -100,9 +114,29 @@ void boss_update(Boss *boss, Player *p, Bullet bullets[], int max_bullets) {
 void boss_draw(Boss *boss, float camera_x, float camera_y) {
     if (!boss->ativo) return;
 
+    // 1. Desenha o corpo do chefe normalmente
     if (boss->sprite_sheet && boss->anim_atual) {
         float sx = boss->anim_atual->frame_atual * boss->frame_largura;
         int flags = (boss->direcao == -1) ? ALLEGRO_FLIP_HORIZONTAL : 0;
         al_draw_scaled_bitmap(boss->sprite_sheet, sx, 0, boss->frame_largura, boss->frame_altura, boss->x - camera_x, boss->y - camera_y, boss->frame_largura * ESCALA, boss->frame_altura * ESCALA, flags);
+    }
+
+    // 2. DESENHA O EFEITO DE TIRO POR CIMA, SE ESTIVER ATIVO (COM AS DIMENSÕES CORRIGIDAS)
+    if (boss->fx_tiro_ativo && boss->sprite_fx_tiro) {
+        // Usa as constantes de config.h para o tamanho exato do frame
+        float fx_w = FX_TIRO_CHEFE_FRAME_LARGURA;
+        float fx_h = FX_TIRO_CHEFE_FRAME_ALTURA;
+        float sx = boss->anim_fx_tiro->frame_atual * fx_w;
+
+        // Posição da ponta da arma
+        float fx_x = boss->x + (boss->direcao == 1 ? BOSS_OFFSET_TIRO_X * ESCALA : (boss->frame_largura - BOSS_OFFSET_TIRO_X) * ESCALA);
+        float fx_y = boss->y + (BOSS_OFFSET_TIRO_Y2 * ESCALA);
+
+        // Centraliza o efeito na ponta da arma
+        fx_x -= (fx_w * ESCALA) / 2;
+        fx_y -= ((fx_h * ESCALA) / 2) - 10;
+        
+        int flags = (boss->direcao == 1) ? ALLEGRO_FLIP_HORIZONTAL : 0;
+        al_draw_scaled_bitmap(boss->sprite_fx_tiro, sx, 0, fx_w, fx_h, fx_x - camera_x, fx_y - camera_y, fx_w * ESCALA, fx_h * ESCALA, flags);
     }
 }

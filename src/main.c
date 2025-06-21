@@ -60,9 +60,8 @@ bool check_collision(float r1x, float r1y, float r1w, float r1h, float r2x, floa
 }
 
 // A assinatura da função agora precisa de todos os ponteiros para os sprites e configs
-void resetar_jogo(Player *p, Enemy inimigos[], Bullet bullets[], Item itens[], Boss *chefe, float *camera_x, int *inimigos_derrotados,
-                  const EnemyConfig *config_soldado_espingarda, const EnemyConfig *config_soldado_escudo,
-                  ALLEGRO_BITMAP *item_heart_sprite) {
+void resetar_jogo(Player *p, Enemy inimigos[], Bullet bullets[], Item itens[], Boss *chefe, float *camera_x, int *inimigos_derrotados, int *vitoria, 
+                const EnemyConfig *config_soldado_espingarda, const EnemyConfig *config_soldado_escudo, ALLEGRO_BITMAP *item_heart_sprite) {
     
     printf("Resetando o jogo...\n");
 
@@ -81,6 +80,7 @@ void resetar_jogo(Player *p, Enemy inimigos[], Bullet bullets[], Item itens[], B
     // 2. Reseta as variáveis de estado do Jogo
     *camera_x = 0;
     *inimigos_derrotados = 0;
+    *vitoria = 0;
 
     // 3. Limpa todos os projéteis ativos
     for (int i = 0; i < MAX_BULLETS; i++) {
@@ -113,58 +113,43 @@ void resetar_jogo(Player *p, Enemy inimigos[], Bullet bullets[], Item itens[], B
     boss_init(chefe);    // Reinicializa a struct do chefe para o estado padrão (inativo)
 }
 
-void inicializar_allegro() {
+int main() {
+
     al_init();
     al_init_image_addon();
     al_install_keyboard();
     al_install_mouse();
-    al_init_font_addon(); // Inicializa o addon de fontes
-    al_init_ttf_addon();  // Inicializa o addon para ler arquivos .ttf
-    al_init_primitives_addon(); // Inicializa o addon de primitivas
-}
+    al_init_font_addon();
+    al_init_ttf_addon();
 
-int main() {
+    ALLEGRO_DISPLAY *janela = al_create_display(LARGURA_TELA, ALTURA_TELA);
+    ALLEGRO_EVENT_QUEUE *fila_eventos = al_create_event_queue();
+    ALLEGRO_TIMER *timer = al_create_timer(1.0 / 60.0);
 
-    inicializar_allegro();
+    ALLEGRO_BITMAP *menu_background = al_load_bitmap("assets/menu_background.png");
+    ALLEGRO_BITMAP *victory_background = al_load_bitmap("assets/victory_background.png");
+    ALLEGRO_BITMAP *gameover_background = al_load_bitmap("assets/gameover_background.png");
+    ALLEGRO_BITMAP *cenario = al_load_bitmap("assets/cenario.webp");
+    ALLEGRO_BITMAP *heart_sprite = al_load_bitmap("assets/heart.png");
 
-    // --- Variáveis ---
-    ALLEGRO_DISPLAY *janela = NULL;
-    ALLEGRO_EVENT_QUEUE *fila_eventos = NULL;
-    ALLEGRO_TIMER *timer = NULL;
-    ALLEGRO_FONT *fonte = NULL;
-    ALLEGRO_BITMAP *cenario = NULL;
-    ALLEGRO_BITMAP *bullet_sprite = NULL;
-    Bullet bullets[MAX_BULLETS];
-    Player *jogador = NULL;
-    Enemy inimigos[MAX_INIMIGOS];
-    ALLEGRO_BITMAP *heart_sprite = NULL;
-    ALLEGRO_BITMAP *item_sprite = NULL;
-    Item itens[MAX_ITENS];
-    ALLEGRO_BITMAP *boss_sprite = NULL;
-    Boss chefe;
+    ALLEGRO_FONT *fonte = al_load_font("assets/PressStart2P-Regular.ttf", 50, 0);
+    ALLEGRO_FONT *titulo_fonte = al_load_font("assets/PressStart2P-Regular.ttf", 62, 0);
     
-    float camera_x = 0, camera_y = 0;
-    int rodando = 1;
+    Bullet bullets[MAX_BULLETS];
+    ALLEGRO_BITMAP *bullet_sprite = al_load_bitmap("assets/bullet.png");
 
-    // --- Variáveis de Estado do Jogo ---
-    GameState estado_atual = MENU;
-    int opcao_menu_selecionada = 0; // 0 = Iniciar, 1 = Sair
-    int opcao_gameover_selecionada = 0; // 0 = Tentar de Novo, 1 = Sair
-    int inimigos_derrotados = 0;
+    Player *jogador = player_create(100, FLOOR_Y);
+    Enemy inimigos[MAX_INIMIGOS];
 
-    // --- Inicialização ---
-    janela = al_create_display(LARGURA_TELA, ALTURA_TELA);
-    fila_eventos = al_create_event_queue();
-    timer = al_create_timer(1.0 / 60.0);
-    fonte = al_load_font("assets/PressStart2P-Regular.ttf", 50, 0); 
-    cenario = al_load_bitmap("assets/cenario.webp");
-    bullet_sprite = al_load_bitmap("assets/bullet.png");
-    heart_sprite = al_load_bitmap("assets/heart.png");
-    item_sprite = al_load_bitmap("assets/item.png");
-    boss_sprite = al_load_bitmap("assets/boss_move.png");
-    jogador = player_create(100, FLOOR_Y);
+    Item itens[MAX_ITENS];
+    ALLEGRO_BITMAP *item_sprite = al_load_bitmap("assets/item.png");
 
-    if (!janela || !fila_eventos || !timer || !fonte || !cenario || !bullet_sprite || !jogador || !heart_sprite || !item_sprite || !boss_sprite) {
+    Boss chefe;
+    ALLEGRO_BITMAP *boss_sprite_move = al_load_bitmap("assets/boss_move.png");
+    ALLEGRO_BITMAP *boss_sprite_fire = al_load_bitmap("assets/boss_fire.png");
+
+    if (!janela || !fila_eventos || !timer || !menu_background || !victory_background || !gameover_background || !cenario 
+        || !heart_sprite || !fonte || !titulo_fonte || !bullet_sprite || !jogador || !item_sprite || !boss_sprite_move || !boss_sprite_fire) {
         printf("ERRO: Falha em um dos componentes de inicialização.\n");
         return -1;
     }
@@ -223,7 +208,16 @@ int main() {
 
     boss_init(&chefe);
 
-    al_set_window_title(janela, "Run 'n Gun");
+    float camera_x = 0, camera_y = 0;
+    int rodando = 1;
+
+    // --- Variáveis de Estado do Jogo ---
+    GameState estado_atual = MENU;
+    int opcao_menu_selecionada = 0; // 0 = Iniciar, 1 = Sair
+    int opcao_gameover_selecionada = 0; // 0 = Tentar de Novo, 1 = Sair
+    int inimigos_derrotados = 0;
+    int vitoria = 0;
+
     al_register_event_source(fila_eventos, al_get_keyboard_event_source());
     al_register_event_source(fila_eventos, al_get_display_event_source(janela));
     al_register_event_source(fila_eventos, al_get_timer_event_source(timer));
@@ -232,7 +226,6 @@ int main() {
 
     al_start_timer(timer);
 
-    // --- Loop Principal com Máquina de Estados ---
     while (rodando) {
         ALLEGRO_EVENT evento;
         al_wait_for_event(fila_eventos, &evento);
@@ -300,10 +293,10 @@ int main() {
 
                     if (evento.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN) {
                         if (opcao_gameover_selecionada == 0) {
-                            resetar_jogo(jogador, inimigos, bullets, itens, &chefe, &camera_x, &inimigos_derrotados, &config_soldado_espingarda, &config_soldado_escudo, item_sprite);
+                            resetar_jogo(jogador, inimigos, bullets, itens, &chefe, &camera_x, &inimigos_derrotados, &vitoria, &config_soldado_espingarda, &config_soldado_escudo, item_sprite);
                             estado_atual = JOGANDO;
                         } else if (opcao_gameover_selecionada == 1) {
-                            resetar_jogo(jogador, inimigos, bullets, itens, &chefe, &camera_x, &inimigos_derrotados, &config_soldado_espingarda, &config_soldado_escudo, item_sprite);
+                            resetar_jogo(jogador, inimigos, bullets, itens, &chefe, &camera_x, &inimigos_derrotados, &vitoria, &config_soldado_espingarda, &config_soldado_escudo, item_sprite);
                             estado_atual = MENU;
                         }
                     }
@@ -313,10 +306,10 @@ int main() {
                         if (evento.keyboard.keycode == ALLEGRO_KEY_DOWN) opcao_gameover_selecionada = 1;
                         if (evento.keyboard.keycode == ALLEGRO_KEY_ENTER) {
                             if (opcao_gameover_selecionada == 0) {
-                                resetar_jogo(jogador, inimigos, bullets, itens, &chefe, &camera_x, &inimigos_derrotados, &config_soldado_espingarda, &config_soldado_escudo, item_sprite);
+                                resetar_jogo(jogador, inimigos, bullets, itens, &chefe, &camera_x, &inimigos_derrotados, &vitoria, &config_soldado_espingarda, &config_soldado_escudo, item_sprite);
                                 estado_atual = JOGANDO;
                             } else if (opcao_gameover_selecionada == 1) {
-                                resetar_jogo(jogador, inimigos, bullets, itens, &chefe, &camera_x, &inimigos_derrotados, &config_soldado_espingarda, &config_soldado_escudo, item_sprite);
+                                resetar_jogo(jogador, inimigos, bullets, itens, &chefe, &camera_x, &inimigos_derrotados, &vitoria, &config_soldado_espingarda, &config_soldado_escudo, item_sprite);
                                 estado_atual = MENU;
                             }
                         }
@@ -328,30 +321,21 @@ int main() {
                 break;
         }
 
+        ALLEGRO_COLOR cor_selecionada = al_map_rgb(255, 255, 0); // Amarelo
+        ALLEGRO_COLOR cor_padrao = al_map_rgb(255, 255, 255);   // Branco
+
         // --- Lógica de Atualização e Desenho (baseada em timer) ---
         if (evento.type == ALLEGRO_EVENT_TIMER) {
-            
-            al_clear_to_color(al_map_rgb(0, 0, 0));
-
             switch (estado_atual) {
                 case MENU:
-                    int altura_linha = al_get_font_line_height(fonte);
-                    int margem_entre_opcoes = 10;
-                        
-                    ALLEGRO_COLOR cor_selecionada = al_map_rgb(255, 255, 0); // Amarelo
-                    ALLEGRO_COLOR cor_padrao = al_map_rgb(255, 255, 255);   // Branco
 
-                    // Posições Y calculadas dinamicamente
-                    float y_titulo = ALTURA_TELA / 2.0f - altura_linha * 2;
-                    float y_opcao1 = ALTURA_TELA / 2.0f;
-                    float y_opcao2 = y_opcao1 + altura_linha + margem_entre_opcoes;
+                    al_draw_bitmap(menu_background, 0, 0, 0);
 
-                    al_draw_text(fonte, cor_padrao, LARGURA_TELA / 2, y_titulo, ALLEGRO_ALIGN_CENTER, "Run 'n Gun");
-                        
-                    al_draw_text(fonte, (opcao_menu_selecionada == 0 ? cor_selecionada : cor_padrao), LARGURA_TELA / 2, y_opcao1, ALLEGRO_ALIGN_CENTER, "Iniciar Jogo");
-                    al_draw_text(fonte, (opcao_menu_selecionada == 1 ? cor_selecionada : cor_padrao), LARGURA_TELA / 2, y_opcao2, ALLEGRO_ALIGN_CENTER, "Sair");
+                    al_draw_text(titulo_fonte, al_map_rgb(255, 0, 0), LARGURA_TELA / 2, 180, ALLEGRO_ALIGN_CENTER, "Winter's Blood");
+
+                    al_draw_text(fonte, (opcao_menu_selecionada == 0 ? cor_selecionada : cor_padrao), LARGURA_TELA / 2, 300, ALLEGRO_ALIGN_CENTER, "Iniciar Jogo");
+                    al_draw_text(fonte, (opcao_menu_selecionada == 1 ? cor_selecionada : cor_padrao), LARGURA_TELA / 2, 370, ALLEGRO_ALIGN_CENTER, "Sair");
                     break;
-
                 case JOGANDO:
                     
                     player_update(jogador);
@@ -412,8 +396,9 @@ int main() {
                                     // Se a vida do chefe chegar a zero...
                                     if (chefe.hp <= 0) {
                                         chefe.ativo = false; // ...ele é simplesmente desativado.
+                                        estado_atual = FIM_DE_JOGO; // Muda o estado do jogo para "Fim de Jogo"
+                                        vitoria = 1; // Marca que o jogador venceu
                                         printf("CHEFE DERROTADO!\\n");
-                                        // Futuramente, aqui podemos mudar para um estado de "VITÓRIA".
                                     }
                                 }
                             }
@@ -487,13 +472,8 @@ int main() {
                         }
                     }
 
-                    // A lógica que verifica se o jogador morreu já existe e cuidará do resto
-                    if (jogador->hp <= 0) {
-                        estado_atual = FIM_DE_JOGO;
-                    }
-
                     if (!chefe.ativo && inimigos_derrotados >= num_level1_spawns) {
-                        boss_spawn(&chefe, 5000, boss_sprite);
+                        boss_spawn(&chefe, 5000, boss_sprite_move, boss_sprite_fire);
                     }
 
                     camera_x = jogador->x;
@@ -533,47 +513,50 @@ int main() {
                         }
                     }
 
-                    break; // Fim do case JOGANDO (desenho)
+                    break;
                 case FIM_DE_JOGO:
-                {
-                    ALLEGRO_COLOR cor_selecionada = al_map_rgb(255, 255, 0);
-                    ALLEGRO_COLOR cor_padrao = al_map_rgb(255, 255, 255);
-                    int altura_linha = al_get_font_line_height(fonte);
 
-                    float y_titulo = ALTURA_TELA / 2 - altura_linha * 2;
-                    float y_opcao1 = ALTURA_TELA / 2 + 20;
-                    float y_opcao2 = y_opcao1 + altura_linha + 10;
+                    if(vitoria){
+                        al_draw_bitmap(victory_background, 0, 0, 0);
+                        al_draw_text(titulo_fonte, al_map_rgb(0, 255, 0), LARGURA_TELA / 2, 180, ALLEGRO_ALIGN_CENTER, "VITORIA");
+                    }
+                    else{
+                        al_draw_bitmap(gameover_background, 0, 0, 0);
+                        al_draw_text(titulo_fonte, al_map_rgb(255, 0, 0), LARGURA_TELA / 2, 180, ALLEGRO_ALIGN_CENTER, "DERROTA");
+                    }
 
-                    al_draw_text(fonte, al_map_rgb(255, 0, 0), LARGURA_TELA / 2, y_titulo, ALLEGRO_ALIGN_CENTER, "FIM DE JOGO");
-                    al_draw_text(fonte, (opcao_gameover_selecionada == 0 ? cor_selecionada : cor_padrao), LARGURA_TELA / 2, y_opcao1, ALLEGRO_ALIGN_CENTER, "Tentar Novamente");
-                    al_draw_text(fonte, (opcao_gameover_selecionada == 1 ? cor_selecionada : cor_padrao), LARGURA_TELA / 2, y_opcao2, ALLEGRO_ALIGN_CENTER, "Voltar para o Menu");
-                }
-                break;
+                    al_draw_text(fonte, (opcao_gameover_selecionada == 0 ? cor_selecionada : cor_padrao), LARGURA_TELA / 2, 300, ALLEGRO_ALIGN_CENTER, "Tentar Novamente");
+                    al_draw_text(fonte, (opcao_gameover_selecionada == 1 ? cor_selecionada : cor_padrao), LARGURA_TELA / 2, 380, ALLEGRO_ALIGN_CENTER, "Voltar para o Menu");
+                    break;
             }
 
             al_flip_display();
         }
     }
 
-    // --- Finalização ---
-    enemy_destroy_animations(inimigos, MAX_INIMIGOS);
+    al_destroy_display(janela);
+    al_destroy_event_queue(fila_eventos);
+    al_destroy_timer(timer);
+    al_destroy_bitmap(menu_background);
+    al_destroy_bitmap(victory_background);
+    al_destroy_bitmap(gameover_background);
+    al_destroy_bitmap(cenario);
+    al_destroy_bitmap(heart_sprite);
     al_destroy_font(fonte);
+    al_destroy_font(titulo_fonte);
+    al_destroy_bitmap(bullet_sprite);
     player_destroy(jogador);
     al_destroy_bitmap(item_sprite);
-    al_destroy_bitmap(cenario);
-    al_destroy_bitmap(bullet_sprite);
-    al_destroy_bitmap(heart_sprite);
+    boss_destroy(&chefe);
+    al_destroy_bitmap(boss_sprite_move);
+    al_destroy_bitmap(boss_sprite_fire);
+    enemy_destroy_animations(inimigos, MAX_INIMIGOS);
     al_destroy_bitmap(enemy1_sprite_idle);
     al_destroy_bitmap(enemy1_sprite_shooting);
     al_destroy_bitmap(enemy1_sprite_death);
     al_destroy_bitmap(enemy2_sprite_idle);
     al_destroy_bitmap(enemy2_sprite_shooting);
     al_destroy_bitmap(enemy2_sprite_death);
-    al_destroy_bitmap(boss_sprite);
-    boss_destroy(&chefe);
-    al_destroy_timer(timer);
-    al_destroy_event_queue(fila_eventos);
-    al_destroy_display(janela);
 
     return 0;
 }
