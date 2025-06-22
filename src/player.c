@@ -23,12 +23,12 @@ struct Player* player_create(float x, float y) {
         return NULL;
     }
 
-    p->anim_parado = animation_create(7, FPS_ANIMACAO);
-    p->anim_correndo = animation_create(12, FPS_ANIMACAO);
-    p->anim_pulando = animation_create(10, FPS_ANIMACAO);
-    p->anim_atirando = animation_create(4, FPS_ANIMACAO * 2);
-    p->anim_agachado = animation_create(1, FPS_ANIMACAO);
-    p->anim_agachado_atirando = animation_create(4, FPS_ANIMACAO * 2);
+    p->anim_parado = animation_create(NUM_FRAMES_PARADO, FPS_ANIMACAO);
+    p->anim_correndo = animation_create(NUM_FRAMES_CORRENDO, FPS_ANIMACAO);
+    p->anim_pulando = animation_create(NUM_FRAMES_PULANDO, FPS_ANIMACAO);
+    p->anim_atirando = animation_create(NUM_FRAMES_ATIRANDO, FPS_ANIMACAO * 2);
+    p->anim_agachado = animation_create(NUM_FRAMES_AGACHADO, FPS_ANIMACAO);
+    p->anim_agachado_atirando = animation_create(NUM_FRAMES_AGACHADO_ATIRANDO, FPS_ANIMACAO * 2);
 
     p->anim_atual = p->anim_parado;
 

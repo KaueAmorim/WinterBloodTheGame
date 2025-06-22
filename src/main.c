@@ -3,6 +3,7 @@
 #include <allegro5/allegro_image.h>
 #include <allegro5/allegro_font.h>
 #include <allegro5/allegro_ttf.h>
+#include <allegro5/allegro_primitives.h>
 
 #include "boss.h"
 #include "config.h" 
@@ -12,19 +13,20 @@
 #include "item.h"
 
 // Struct para guardar os dados de spawn de um inimigo
-typedef struct {
+struct EnemySpawnInfo{
     enum EnemyType tipo;
     float x;
     float y;
-} EnemySpawnInfo;
+};
 
-typedef struct {
+// Struct para guardar os dados de spawn de um item
+struct ItemSpawnInfo {
     enum ItemType tipo;
     float x;
     float y;
-} ItemSpawnInfo;
+};
 
-static const EnemySpawnInfo level1_spawns[] = {
+static const struct EnemySpawnInfo level1_spawns[] = {
     {SOLDADO_ESCUDO, 800, FLOOR_Y},
     {SOLDADO_ESCUDO, 1800, FLOOR_Y},
     {SOLDADO_ESPINGARDA, 1900, FLOOR_Y},
@@ -34,17 +36,15 @@ static const EnemySpawnInfo level1_spawns[] = {
     {SOLDADO_ESPINGARDA, 3200, FLOOR_Y}
 };
 
-// Calcula automaticamente quantos inimigos temos na lista
-static const int num_level1_spawns = sizeof(level1_spawns) / sizeof(level1_spawns[0]);
-
-
-static const ItemSpawnInfo level1_items[] = {
+static const struct ItemSpawnInfo level1_items[] = {
     {VODKA, 3600, FLOOR_Y + ALTURA_JOGADOR_VISUAL - 96}
 };
 
+// Calcula automaticamente quantos inimigos temos na lista
+static const int num_level1_spawns = sizeof(level1_spawns) / sizeof(level1_spawns[0]);
+
 // Calcula automaticamente quantos itens temos na lista
 static const int num_level1_items = sizeof(level1_items) / sizeof(level1_items[0]);
-
 
 // Função que verifica se dois retângulos (r1 e r2) estão colidindo
 int check_collision(float r1x, float r1y, float r1w, float r1h, float r2x, float r2y, float r2w, float r2h) {
@@ -57,35 +57,37 @@ int check_collision(float r1x, float r1y, float r1w, float r1h, float r2x, float
     return 0;
 }
 
-// A assinatura da função agora precisa de todos os ponteiros para os sprites e configs
-void resetar_jogo(struct Player *p, struct Enemy inimigos[], struct Bullet bullets[], struct Item itens[], Boss *chefe, float *camera_x, int *inimigos_derrotados, int *vitoria, 
+void resetar_jogo(struct Player *p, struct Enemy inimigos[], struct Bullet bullets[], struct Item itens[], struct Boss *chefe, float *camera_x, int *inimigos_derrotados, int *vitoria, 
                 const struct EnemyConfig *config_soldado_espingarda, const struct EnemyConfig *config_soldado_escudo, ALLEGRO_BITMAP *item_heart_sprite) {
 
     printf("Resetando o jogo...\n");
 
-    // 1. Reseta o estado do Jogador
+    // Reseta o estado do Jogador
     p->hp = 5;
     p->x = 100;
     p->y = FLOOR_Y;
     p->vel_x = 0;
     p->vel_y = 0;
+    p->no_chao = true;
     p->estado = PARADO;
     p->direcao = 1;
     p->anim_atual = p->anim_parado;
     animation_reset(p->anim_atual);
     controls_reset(p->controles);
+    p->tempo_estado_tiro = 0.0f;
+    p->cooldown_tiro = 0.0f;
 
-    // 2. Reseta as variáveis de estado do Jogo
+    // Reseta as variáveis de estado do Jogo
     *camera_x = 0;
     *inimigos_derrotados = 0;
     *vitoria = 0;
 
-    // 3. Limpa todos os projéteis ativos
+    // Limpa todos os projéteis ativos
     for (int i = 0; i < MAX_BULLETS; i++) {
         bullets[i].ativo = 0;
     }
 
-    // 4. Limpa e recria os Inimigos Normais a partir do mapa da fase
+    // Limpa e recria os Inimigos
     enemy_destroy_animations(inimigos, MAX_INIMIGOS);
     enemy_init(inimigos, MAX_INIMIGOS);
     for (int i = 0; i < num_level1_spawns; i++) {
@@ -98,7 +100,7 @@ void resetar_jogo(struct Player *p, struct Enemy inimigos[], struct Bullet bulle
         }
     }
 
-    // 5. Limpa e recria os Itens a partir do mapa da fase
+    // Limpa e recria os Itens
     item_init(itens, MAX_ITENS);
     for (int i = 0; i < num_level1_items; i++) {
         if (level1_items[i].tipo == VODKA) {
@@ -107,8 +109,8 @@ void resetar_jogo(struct Player *p, struct Enemy inimigos[], struct Bullet bulle
     }
 
     // 6. Garante que o Chefe está inativo
-    boss_destroy(chefe); // Libera as animações antigas do chefe
-    boss_init(chefe);    // Reinicializa a struct do chefe para o estado padrão (inativo)
+    boss_destroy_animations(chefe);
+    boss_init(chefe);
 }
 
 int main() {
@@ -119,6 +121,7 @@ int main() {
     al_install_mouse();
     al_init_font_addon();
     al_init_ttf_addon();
+    al_init_primitives_addon();
 
     ALLEGRO_DISPLAY *janela = al_create_display(LARGURA_TELA, ALTURA_TELA);
     ALLEGRO_EVENT_QUEUE *fila_eventos = al_create_event_queue();
@@ -142,7 +145,7 @@ int main() {
     struct Item itens[MAX_ITENS];
     ALLEGRO_BITMAP *item_sprite = al_load_bitmap("assets/item.png");
 
-    Boss chefe;
+    struct Boss chefe;
     ALLEGRO_BITMAP *boss_sprite_move = al_load_bitmap("assets/boss_move.png");
     ALLEGRO_BITMAP *boss_sprite_fire = al_load_bitmap("assets/boss_fire.png");
 
@@ -195,7 +198,9 @@ int main() {
         enemy_spawn(inimigos, MAX_INIMIGOS, config_atual, level1_spawns[i].x, level1_spawns[i].y);
     }
 
-    for (int i = 0; i < MAX_BULLETS; i++) { bullets[i].ativo = 0; }
+    for (int i = 0; i < MAX_BULLETS; i++) { 
+        bullets[i].ativo = 0; 
+    }
 
     item_init(itens, MAX_ITENS);
     for (int i = 0; i < num_level1_items; i++) {
@@ -208,12 +213,12 @@ int main() {
 
     float camera_x = 0, camera_y = 0;
     int rodando = 1;
+    int inimigos_derrotados = 0;
 
     // --- Variáveis de Estado do Jogo ---
-    GameState estado_atual = MENU;
-    int opcao_menu_selecionada = 0; // 0 = Iniciar, 1 = Sair
-    int opcao_gameover_selecionada = 0; // 0 = Tentar de Novo, 1 = Sair
-    int inimigos_derrotados = 0;
+    enum GameState estado_atual = MENU;
+    int opcao_menu_selecionada = -1; // 0 = Iniciar, 1 = Sair
+    int opcao_gameover_selecionada = -1; // 0 = Tentar de Novo, 1 = Sair
     int vitoria = 0;
 
     al_register_event_source(fila_eventos, al_get_keyboard_event_source());
@@ -232,84 +237,77 @@ int main() {
             estado_atual = SAIR;
         }
 
-        // --- Lógica de Estados ---
         switch (estado_atual) {
             case MENU:
-                { // Chaves para criar um escopo local para as variáveis
-                    int altura_linha = al_get_font_line_height(fonte);
-                    int margem_entre_opcoes = 10; // Espaço extra entre as opções
-
-                    float y_opcao1_inicio = ALTURA_TELA / 2.0f;
-                    float y_opcao1_fim = y_opcao1_inicio + altura_linha;
-
-                    float y_opcao2_inicio = y_opcao1_fim + margem_entre_opcoes;
-                    float y_opcao2_fim = y_opcao2_inicio + altura_linha;
-
-                    // Lógica de Hover (passar o mouse por cima)
-                    if (evento.type == ALLEGRO_EVENT_MOUSE_AXES) {
-                        int mouse_y = evento.mouse.y;
-                        if (mouse_y >= y_opcao1_inicio && mouse_y < y_opcao1_fim) opcao_menu_selecionada = 0;
-                        else if (mouse_y >= y_opcao2_inicio && mouse_y < y_opcao2_fim) opcao_menu_selecionada = 1;
-                    }
+                // Lógica de Hover (passar o mouse por cima)
+                if (evento.type == ALLEGRO_EVENT_MOUSE_AXES) {
+                    if (evento.mouse.y >= 300 && evento.mouse.y < 350 && evento.mouse.x >= 200 && evento.mouse.x < 800) opcao_menu_selecionada = 0;
+                    else if (evento.mouse.y >= 370 && evento.mouse.y < 420 && evento.mouse.x >= 400 && evento.mouse.x < 600) opcao_menu_selecionada = 1;
+                    else opcao_menu_selecionada = -1;  // Se o mouse não está sobre nenhuma das duas opções.
+                }
                     
-                    // Lógica de Clique do Mouse
-                    if (evento.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN && evento.mouse.button == 1) {
-                        if (opcao_menu_selecionada == 0) estado_atual = JOGANDO;
-                        else if (opcao_menu_selecionada == 1) estado_atual = SAIR;
-                    }
+                // Lógica de Clique do Mouse
+                if (evento.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN && evento.mouse.button == 1) {
+                    if (opcao_menu_selecionada == 0) estado_atual = JOGANDO;
+                    else if (opcao_menu_selecionada == 1) estado_atual = SAIR;
+                }
 
-                    // Lógica do Teclado
-                    if (evento.type == ALLEGRO_EVENT_KEY_DOWN) {
-                        switch (evento.keyboard.keycode) {
-                            case ALLEGRO_KEY_UP:   opcao_menu_selecionada = 0; break;
-                            case ALLEGRO_KEY_DOWN: opcao_menu_selecionada = 1; break;
-                            case ALLEGRO_KEY_ENTER:
-                                if (opcao_menu_selecionada == 0) estado_atual = JOGANDO;
-                                else if (opcao_menu_selecionada == 1) estado_atual = SAIR;
-                                break;
-                        }
+                // Lógica do Teclado
+                if (evento.type == ALLEGRO_EVENT_KEY_DOWN) {
+                    switch (evento.keyboard.keycode) {
+                        case ALLEGRO_KEY_UP:   
+                            opcao_menu_selecionada = 0; 
+                            break;
+                        case ALLEGRO_KEY_DOWN: 
+                            opcao_menu_selecionada = 1; 
+                            break;
+                        case ALLEGRO_KEY_ENTER:
+                            if (opcao_menu_selecionada == 0) estado_atual = JOGANDO;
+                            else if (opcao_menu_selecionada == 1) estado_atual = SAIR;
+                            break;
                     }
                 }
                 break;
             case JOGANDO:
+                // Lógica de Entrada do Jogador
                 controls_handle_input(jogador->controles, &evento);
                 break;
             case FIM_DE_JOGO:
-                { // Escopo local para variáveis
-                    int altura_linha = al_get_font_line_height(fonte);
-                    float y_opcao1_inicio = ALTURA_TELA / 2 + 20;
-                    float y_opcao1_fim = y_opcao1_inicio + altura_linha;
-                    float y_opcao2_inicio = y_opcao1_fim + 10;
-                    float y_opcao2_fim = y_opcao2_inicio + altura_linha;
+                if (evento.type == ALLEGRO_EVENT_MOUSE_AXES) {
+                    if (evento.mouse.y >= 300 && evento.mouse.y < 350 && evento.mouse.x >= 100 && evento.mouse.x < 900) opcao_gameover_selecionada = 0;
+                    else if (evento.mouse.y >= 380 && evento.mouse.y < 430 && evento.mouse.x >= 50 && evento.mouse.x < 950) opcao_gameover_selecionada = 1;
+                    else opcao_gameover_selecionada = -1;  // Se o mouse não está sobre nenhuma das duas opções.
+                }
 
-                    if (evento.type == ALLEGRO_EVENT_MOUSE_AXES) {
-                        int mouse_y = evento.mouse.y;
-                        if (mouse_y >= y_opcao1_inicio && mouse_y < y_opcao1_fim) opcao_gameover_selecionada = 0;
-                        else if (mouse_y >= y_opcao2_inicio && mouse_y < y_opcao2_fim) opcao_gameover_selecionada = 1;
+                if (evento.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN && evento.mouse.button == 1) {
+                    if (opcao_gameover_selecionada == 0) {
+                        resetar_jogo(jogador, inimigos, bullets, itens, &chefe, &camera_x, &inimigos_derrotados, &vitoria, &config_soldado_espingarda, &config_soldado_escudo, item_sprite);
+                        estado_atual = JOGANDO;
+                    } 
+                    else if (opcao_gameover_selecionada == 1) {
+                        resetar_jogo(jogador, inimigos, bullets, itens, &chefe, &camera_x, &inimigos_derrotados, &vitoria, &config_soldado_espingarda, &config_soldado_escudo, item_sprite);
+                        estado_atual = MENU;
                     }
+                }
 
-                    if (evento.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN) {
-                        if (opcao_gameover_selecionada == 0) {
-                            resetar_jogo(jogador, inimigos, bullets, itens, &chefe, &camera_x, &inimigos_derrotados, &vitoria, &config_soldado_espingarda, &config_soldado_escudo, item_sprite);
-                            estado_atual = JOGANDO;
-                        } else if (opcao_gameover_selecionada == 1) {
-                            resetar_jogo(jogador, inimigos, bullets, itens, &chefe, &camera_x, &inimigos_derrotados, &vitoria, &config_soldado_espingarda, &config_soldado_escudo, item_sprite);
-                            estado_atual = MENU;
-                        }
-                    }
-
-                    if (evento.type == ALLEGRO_EVENT_KEY_DOWN) {
-                        if (evento.keyboard.keycode == ALLEGRO_KEY_UP) opcao_gameover_selecionada = 0;
-                        if (evento.keyboard.keycode == ALLEGRO_KEY_DOWN) opcao_gameover_selecionada = 1;
-                        if (evento.keyboard.keycode == ALLEGRO_KEY_ENTER) {
+                if (evento.type == ALLEGRO_EVENT_KEY_DOWN) {
+                    switch (evento.keyboard.keycode) {
+                        case ALLEGRO_KEY_UP:   
+                            opcao_gameover_selecionada = 0; 
+                            break;
+                        case ALLEGRO_KEY_DOWN: 
+                            opcao_gameover_selecionada = 1; 
+                            break;
+                        case ALLEGRO_KEY_ENTER:
                             if (opcao_gameover_selecionada == 0) {
                                 resetar_jogo(jogador, inimigos, bullets, itens, &chefe, &camera_x, &inimigos_derrotados, &vitoria, &config_soldado_espingarda, &config_soldado_escudo, item_sprite);
                                 estado_atual = JOGANDO;
-                            } else if (opcao_gameover_selecionada == 1) {
+                            } 
+                            else if (opcao_gameover_selecionada == 1) {
                                 resetar_jogo(jogador, inimigos, bullets, itens, &chefe, &camera_x, &inimigos_derrotados, &vitoria, &config_soldado_espingarda, &config_soldado_escudo, item_sprite);
                                 estado_atual = MENU;
                             }
-                        }
+                            break;
                     }
                 }
                 break;
@@ -319,13 +317,12 @@ int main() {
         }
 
         ALLEGRO_COLOR cor_selecionada = al_map_rgb(255, 255, 0); // Amarelo
-        ALLEGRO_COLOR cor_padrao = al_map_rgb(255, 255, 255);   // Branco
+        ALLEGRO_COLOR cor_padrao = al_map_rgb(255, 255, 255);    // Branco
 
         // --- Lógica de Atualização e Desenho (baseada em timer) ---
         if (evento.type == ALLEGRO_EVENT_TIMER) {
             switch (estado_atual) {
                 case MENU:
-
                     al_draw_bitmap(menu_background, 0, 0, 0);
 
                     al_draw_text(titulo_fonte, al_map_rgb(255, 0, 0), LARGURA_TELA / 2, 180, ALLEGRO_ALIGN_CENTER, "Winter's Blood");
@@ -334,39 +331,52 @@ int main() {
                     al_draw_text(fonte, (opcao_menu_selecionada == 1 ? cor_selecionada : cor_padrao), LARGURA_TELA / 2, 370, ALLEGRO_ALIGN_CENTER, "Sair");
                     break;
                 case JOGANDO:
-                    
                     player_update(jogador);
-                    for (int i = 0; i < MAX_INIMIGOS; i++) { if (inimigos[i].ativo) enemy_update(&inimigos[i], jogador, bullets, MAX_BULLETS); }
-                    for (int i = 0; i < MAX_BULLETS; i++) { if (bullets[i].ativo) bullet_update(&bullets[i], camera_x); }
-                    
-                    if (chefe.ativo) { boss_update(&chefe, jogador, bullets, MAX_BULLETS); }
+                    for (int i = 0; i < MAX_INIMIGOS; i++) { 
+                        if (inimigos[i].ativo) enemy_update(&inimigos[i], jogador, bullets, MAX_BULLETS);
+                    }
+                    for (int i = 0; i < MAX_BULLETS; i++) { 
+                        if (bullets[i].ativo) bullet_update(&bullets[i], camera_x);
+                    }
+                    if (chefe.ativo) { 
+                        boss_update(&chefe, jogador, bullets, MAX_BULLETS);
+                    }
 
                     player_fire(jogador, bullets, MAX_BULLETS);
 
-                    // --- LÓGICA DE COMBATE E COLISÃO ATUALIZADA ---
+                    // Hitbox do jogador
+                    float player_hitbox_x = jogador->x + (jogador->hitbox_offset_x * ESCALA);
+                    float player_hitbox_y = jogador->y + (jogador->hitbox_offset_y * ESCALA);
+                    float player_hitbox_w = jogador->hitbox_largura * ESCALA;
+                    float player_hitbox_h = jogador->hitbox_altura * ESCALA;
+
+                    // Hitbox do chefe
+                    float boss_hitbox_x = chefe.x + (chefe.hitbox_offset_x * ESCALA);
+                    float boss_hitbox_y = chefe.y + (chefe.hitbox_offset_y * ESCALA);
+                    float boss_hitbox_w = chefe.hitbox_largura * ESCALA;
+                    float boss_hitbox_h = chefe.hitbox_altura * ESCALA;
+
+                    // --- Lógica de Colisão Bullets ---
                     for (int i = 0; i < MAX_BULLETS; i++) {
                         if (!bullets[i].ativo) continue;
 
-                        // Caixa de colisão do projétil
-                        float bullet_x = bullets[i].x, bullet_y = bullets[i].y;
-                        float bullet_w = LARGURA_BULLET, bullet_h = ALTURA_BULLET;
-
-                        // VERIFICA SE O PROJÉTIL DO JOGADOR ACERTOU UM INIMIGO
+                        // Verifica se o projétil do jogador acertou algum inimigo ou o chefe
                         if (bullets[i].owner == PLAYER) {
+                            
                             for (int j = 0; j < MAX_INIMIGOS; j++) {
                                 if (!inimigos[j].ativo) continue;
 
-                                // --- LÓGICA DA HITBOX DO INIMIGO ---
-                                float enemy_w = HITBOX_INIMIGO_LARGURA * ESCALA;
-                                float enemy_h = HITBOX_INIMIGO_ALTURA * ESCALA;
+                                // Hitbox do inimigo
                                 float enemy_x = inimigos[j].x + (HITBOX_INIMIGO_OFFSET_X * ESCALA);
                                 float enemy_y = inimigos[j].y + (HITBOX_INIMIGO_OFFSET_Y * ESCALA);
+                                float enemy_w = HITBOX_INIMIGO_LARGURA * ESCALA;
+                                float enemy_h = HITBOX_INIMIGO_ALTURA * ESCALA;
 
-                                if (check_collision(bullet_x, bullet_y, bullet_w, bullet_h, enemy_x, enemy_y, enemy_w, enemy_h)) {
+                                if (check_collision(bullets[i].x, bullets[i].y, LARGURA_BULLET, ALTURA_BULLET, enemy_x, enemy_y, enemy_w, enemy_h)) {
                                     bullets[i].ativo = 0; 
                                     inimigos[j].hp--;
                                     
-                                    // SE o inimigo morreu E ele ainda não estava morrendo
+                                    // Se o inimigo morreu e ele ainda não estava morrendo
                                     if (inimigos[j].hp <= 0 && inimigos[j].estado != INIMIGO_MORRENDO) {
                                         inimigos[j].estado = INIMIGO_MORRENDO;
                                         inimigos[j].anim_atual = inimigos[j].anim_morrendo;
@@ -377,39 +387,25 @@ int main() {
                                 }
                             }
 
-                            // Testa colisão com o chefe (se ele estiver ativo)
                             if (chefe.ativo) {
-                                // Calcula a hitbox do chefe
-                                float boss_hitbox_x = chefe.x + (chefe.hitbox_offset_x * ESCALA);
-                                float boss_hitbox_y = chefe.y + (chefe.hitbox_offset_y * ESCALA);
 
-                                // Verifica a colisão
-                                if (check_collision(bullet_x, bullet_y, bullet_w, bullet_h, boss_hitbox_x, boss_hitbox_y, chefe.hitbox_largura, chefe.hitbox_altura)) {
-                                
-                                    bullets[i].ativo = 0; // Projétil desaparece
-                                    chefe.hp--;               // Chefe perde vida
+                                if (check_collision(bullets[i].x, bullets[i].y, LARGURA_BULLET, ALTURA_BULLET, boss_hitbox_x, boss_hitbox_y, boss_hitbox_w, boss_hitbox_h)) {
+                                    bullets[i].ativo = 0;
+                                    chefe.hp--;
 
-                                    // --- NOVA LÓGICA DE DERROTA ---
-                                    // Se a vida do chefe chegar a zero...
+                                    // Se o chefe morreu
                                     if (chefe.hp <= 0) {
-                                        chefe.ativo = 0; // ...ele é simplesmente desativado.
-                                        estado_atual = FIM_DE_JOGO; // Muda o estado do jogo para "Fim de Jogo"
-                                        vitoria = 1; // Marca que o jogador venceu
-                                        printf("CHEFE DERROTADO!\\n");
+                                        chefe.ativo = 0; 
+                                        estado_atual = FIM_DE_JOGO;
+                                        vitoria = 1;
                                     }
                                 }
                             }
                         }
-                        // VERIFICA SE O PROJÉTIL DO INIMIGO ACERTOU O JOGADOR
+                        // Verifica se o projétil do inimigo ou do chefe acertou o jogador
                         else if (bullets[i].owner == ENEMY) {
 
-                            // --- LÓGICA DA HITBOX DO JOGADOR ---
-                            float player_w = jogador->hitbox_largura * ESCALA;
-                            float player_h = jogador->hitbox_altura * ESCALA;
-                            float player_x = jogador->x + (jogador->hitbox_offset_x * ESCALA);
-                            float player_y = jogador->y + (jogador->hitbox_offset_y * ESCALA);
-
-                            if (check_collision(bullet_x, bullet_y, bullet_w, bullet_h, player_x, player_y, player_w, player_h)) {
+                            if (check_collision(bullets[i].x, bullets[i].y, LARGURA_BULLET, ALTURA_BULLET, player_hitbox_x, player_hitbox_y, player_hitbox_w, player_hitbox_h)) {
                                 bullets[i].ativo = 0;
                                 jogador->hp--;
                                 if (jogador->hp <= 0) {
@@ -420,57 +416,35 @@ int main() {
                         }
                     }
 
-                    // --- LÓGICA DE COLISÃO DO JOGADOR COM ITENS ---
+                    // --- Lógica de Colisão com Itens ---
                     for (int i = 0; i < MAX_ITENS; i++) {
                         if (itens[i].ativo) {
-                    
-                            // Pega a hitbox atual do jogador
-                            float player_hitbox_x = jogador->x + (jogador->hitbox_offset_x * ESCALA);
-                            float player_hitbox_y = jogador->y + (jogador->hitbox_offset_y * ESCALA);
-                            float player_hitbox_w = jogador->hitbox_largura * ESCALA;
-                            float player_hitbox_h = jogador->hitbox_altura * ESCALA;
 
-                            // Calcula a posição e o tamanho da hitbox do item
+                            // Hitbox do item
                             float item_hitbox_x = itens[i].x + HITBOX_ITEM_OFFSET_X;
                             float item_hitbox_y = itens[i].y + HITBOX_ITEM_OFFSET_Y;
-                            float item_hitbox_w = HITBOX_ITEM_LARGURA;
-                            float item_hitbox_h = HITBOX_ITEM_ALTURA;
 
-                            // Verifica a colisão
-                            if (check_collision(player_hitbox_x, player_hitbox_y, player_hitbox_w, player_hitbox_h, item_hitbox_x, item_hitbox_y, item_hitbox_w, item_hitbox_h)) {
+                            if (check_collision(player_hitbox_x, player_hitbox_y, player_hitbox_w, player_hitbox_h, item_hitbox_x, item_hitbox_y, HITBOX_ITEM_LARGURA, HITBOX_ITEM_ALTURA)) {
                                 if (itens[i].tipo == VODKA) {
                                     jogador->hp += 3;
-                                    itens[i].ativo = 0; // Desativa o item para não ser pego de novo
+                                    itens[i].ativo = 0;
                                 }
                             }
                         }
                     }
 
-                    // --- LÓGICA DE COLISÃO: JOGADOR vs CHEFE (DANO DE TOQUE) ---
-                    // Só verifica se o chefe e o jogador estão vivos e ativos
+                    // --- Lógica de Colisão: Jogador vs Chefe (Dano de Toque) ---
                     if (chefe.ativo && jogador->hp > 0) {
-                        
-                        // --- HITBOX DO JOGADOR (CORRIGIDA COM ESCALA) ---
-                        float player_w = jogador->hitbox_largura * ESCALA;
-                        float player_h = jogador->hitbox_altura * ESCALA;
-                        float player_x = jogador->x + (jogador->hitbox_offset_x * ESCALA);
-                        float player_y = jogador->y + (jogador->hitbox_offset_y * ESCALA);
-
-                        // Pega a hitbox do chefe
-                        float boss_w = chefe.hitbox_largura;
-                        float boss_h = chefe.hitbox_altura;
-                        float boss_x = chefe.x + chefe.hitbox_offset_x;
-                        float boss_y = chefe.y + chefe.hitbox_offset_y;
 
                         // Se as hitboxes se tocarem, o jogador morre instantaneamente
-                        if (check_collision(player_x, player_y, player_w, player_h, boss_x, boss_y, boss_w, boss_h)) {
-                            printf("Colisão entre Jogador e Chefe! Fim de jogo.\\n");
-                            jogador->hp = 0; // Zera a vida do jogador
+                        if (check_collision(player_hitbox_x, player_hitbox_y, jogador->hitbox_largura, jogador->hitbox_altura, boss_hitbox_x, boss_hitbox_y, chefe.hitbox_largura, chefe.hitbox_altura)) {
+                            jogador->hp = 0;
+                            estado_atual = FIM_DE_JOGO;
                         }
                     }
 
                     if (!chefe.ativo && inimigos_derrotados >= num_level1_spawns) {
-                        boss_spawn(&chefe, 5000, boss_sprite_move, boss_sprite_fire);
+                        boss_spawn(&chefe, 5000, FLOOR_Y - 100, boss_sprite_move, boss_sprite_fire);
                     }
 
                     camera_x = jogador->x;
@@ -481,29 +455,24 @@ int main() {
                     al_draw_bitmap(cenario, LARGURA_MUNDO - offset_x, 0, 0);
 
                     player_draw(jogador, camera_x, camera_y);
-                    for (int i = 0; i < MAX_BULLETS; i++) { bullet_draw(&bullets[i], bullet_sprite, camera_x, camera_y); }
+                    for (int i = 0; i < MAX_BULLETS; i++) { 
+                        bullet_draw(&bullets[i], bullet_sprite, camera_x, camera_y);
+                    }
                     enemy_draw(inimigos, MAX_INIMIGOS, camera_x, camera_y);
                     item_draw(itens, MAX_ITENS, camera_x, camera_y);
                     if (chefe.ativo) {
                         boss_draw(&chefe, camera_x, camera_y);
                     }
 
+                    // Desenha a vida do jogador
                     if (heart_sprite) {
-                        int padding = 5; // Espaçamento entre os corações
-
                         for (int i = 0; i < jogador->hp; i++) {
-                            // Calcula a posição X de cada coração
-                            float x_pos = 10 + i * (50 + padding);
-                            float y_pos = 10;
-                            
-                            // Desenha o sprite do coração no tamanho definido em config.h
-                            al_draw_scaled_bitmap(heart_sprite, 0, 0, al_get_bitmap_width(heart_sprite), al_get_bitmap_height(heart_sprite), x_pos, y_pos, 50, 50, 0);
+                            al_draw_scaled_bitmap(heart_sprite, 0, 0, al_get_bitmap_width(heart_sprite), al_get_bitmap_height(heart_sprite), 10 + i * 55, 10, 50, 50, 0);
                         }
                     }
 
                     break;
                 case FIM_DE_JOGO:
-
                     if(vitoria){
                         al_draw_bitmap(victory_background, 0, 0, 0);
                         al_draw_text(titulo_fonte, al_map_rgb(0, 255, 0), LARGURA_TELA / 2, 180, ALLEGRO_ALIGN_CENTER, "VITORIA");
@@ -535,7 +504,7 @@ int main() {
     al_destroy_bitmap(bullet_sprite);
     player_destroy(jogador);
     al_destroy_bitmap(item_sprite);
-    boss_destroy(&chefe);
+    boss_destroy_animations(&chefe);
     al_destroy_bitmap(boss_sprite_move);
     al_destroy_bitmap(boss_sprite_fire);
     enemy_destroy_animations(inimigos, MAX_INIMIGOS);
