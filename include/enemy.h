@@ -2,19 +2,19 @@
 #define ENEMY_H
 
 #include <allegro5/allegro5.h>
-#include <stdbool.h>
 #include <math.h>
 #include "player.h"
 #include "animation.h"
-// Um enum para os tipos de inimigos, para o futuro
-typedef enum {
+
+// Enum para os diferentes tipos de inimigos no jogo.
+enum EnemyType {
     SOLDADO_ESPINGARDA,
     SOLDADO_ESCUDO
-} EnemyType;
+};
 
-// --- A "RECEITA" PARA CADA TIPO DE INIMIGO ---
-typedef struct {
-    EnemyType tipo;
+// Estrutura de configuração que funciona como uma "receita" para criar um tipo de inimigo.
+struct EnemyConfig {
+    enum EnemyType tipo;
     int hp;
     int num_frames_parado;
     int num_frames_atirando;
@@ -22,29 +22,26 @@ typedef struct {
     ALLEGRO_BITMAP *folha_sprite_parado;
     ALLEGRO_BITMAP *folha_sprite_atirando;
     ALLEGRO_BITMAP *folha_sprite_morrendo;
-} EnemyConfig;
+};
 
 // Enum para os estados do inimigo
-typedef enum {
+enum EnemyState {
     INIMIGO_PARADO,
     INIMIGO_ATIRANDO,
     INIMIGO_MORRENDO
-} EnemyState;
+};
 
-
-typedef struct {
+struct Enemy {
     float x, y;
     int hp;
-    bool ativo;
-    EnemyType tipo;
-    EnemyState estado;
+    unsigned int ativo;
+    enum EnemyType tipo;
+    enum EnemyState estado;
 
-    // Sprites
     ALLEGRO_BITMAP *folha_sprite_parado;
     ALLEGRO_BITMAP *folha_sprite_atirando;
     ALLEGRO_BITMAP *folha_sprite_morrendo;
 
-    // Animações
     struct Animation *anim_parado;
     struct Animation *anim_atirando;
     struct Animation *anim_morrendo;
@@ -55,12 +52,21 @@ typedef struct {
     int direcao;
     float cooldown_tiro;
     float tempo_estado_tiro;
-} Enemy;
+};
 
-void enemy_init(Enemy inimigos[], int max_inimigos);
-void enemy_spawn(Enemy inimigos[], int max_inimigos, const EnemyConfig *config, float x, float y);
-void enemy_update(Enemy *e, struct Player *p, struct Bullet bullets[], int max_bullets);
-void enemy_draw(Enemy inimigos[], int max_inimigos, float camera_x, float camera_y);
-void enemy_destroy_animations(Enemy inimigos[], int max_inimigos);
+// Inicializa o array de inimigos, marcando todos como inativos.
+void enemy_init(struct Enemy inimigos[], int max_inimigos);
+
+// Cria (spawna) um inimigo em uma posição, usando uma "receita" (config).
+void enemy_spawn(struct Enemy inimigos[], int max_inimigos, const struct EnemyConfig *config, float x, float y);
+
+// Atualiza a lógica (IA, estado, animação) de um único inimigo.
+void enemy_update(struct Enemy *e, struct Player *p, struct Bullet bullets[], int max_bullets);
+
+// Desenha todos os inimigos ativos na tela.
+void enemy_draw(struct Enemy inimigos[], int max_inimigos, float camera_x, float camera_y);
+
+// Libera a memória de todos os objetos de animação de todos os inimigos.
+void enemy_destroy_animations(struct Enemy inimigos[], int max_inimigos);
 
 #endif

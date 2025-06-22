@@ -1,53 +1,55 @@
 #include "enemy.h"
 #include "config.h"
 
-// Inicializa o array de inimigos, marcando todos como inativos
-void enemy_init(Enemy inimigos[], int max_inimigos) {
+void enemy_init(struct Enemy inimigos[], int max_inimigos) {
     for (int i = 0; i < max_inimigos; i++) {
-        inimigos[i].ativo = false;
+        inimigos[i].x = 0;
+        inimigos[i].y = 0;
+        inimigos[i].hp = 0;
+        inimigos[i].ativo = 0;
+        inimigos[i].tipo = SOLDADO_ESPINGARDA;
+        inimigos[i].estado = INIMIGO_PARADO;
+        inimigos[i].folha_sprite_parado = NULL;
+        inimigos[i].folha_sprite_atirando = NULL;
+        inimigos[i].folha_sprite_morrendo = NULL;
         inimigos[i].anim_parado = NULL;
         inimigos[i].anim_atirando = NULL;
         inimigos[i].anim_morrendo = NULL;
+        inimigos[i].anim_atual = NULL;
+        inimigos[i].frame_largura = 0;
+        inimigos[i].frame_altura = 0;
+        inimigos[i].direcao = 1;
+        inimigos[i].cooldown_tiro = 0;
+        inimigos[i].tempo_estado_tiro = 0;
     }
 }
 
-void enemy_destroy_animations(Enemy inimigos[], int max_inimigos) {
-    for (int i = 0; i < max_inimigos; i++) {
-        animation_destroy(inimigos[i].anim_parado);
-        animation_destroy(inimigos[i].anim_atirando);
-        animation_destroy(inimigos[i].anim_morrendo);
-    }
-}
-
-// "Spawna" um inimigo em uma posição específica
-void enemy_spawn(Enemy inimigos[], int max_inimigos, const EnemyConfig *config, float x, float y) {
+void enemy_spawn(struct Enemy inimigos[], int max_inimigos, const struct EnemyConfig *config, float x, float y) {
     for (int i = 0; i < max_inimigos; i++) {
         if (!inimigos[i].ativo) {
-            Enemy *e = &inimigos[i];
-            e->ativo = true;
+            struct Enemy *e = &inimigos[i];
+            
+            e->ativo = 1;
             e->x = x;
-            e->y = FLOOR_Y;
+            e->y = y;
             e->direcao = -1;
             e->estado = INIMIGO_PARADO;
             e->frame_largura = 128;
             e->frame_altura = 128;
 
-            // --- COPIA OS DADOS DA "RECEITA" ---
             e->tipo = config->tipo;
             e->hp = config->hp;
             e->folha_sprite_parado = config->folha_sprite_parado;
             e->folha_sprite_atirando = config->folha_sprite_atirando;
             e->folha_sprite_morrendo = config->folha_sprite_morrendo;
-            // ------------------------------------
 
-            // Cria os objetos de animação com os dados da receita
-            e->anim_parado = animation_create(config->num_frames_parado, FPS_ANIMACAO / 2.0);
+            e->anim_parado = animation_create(config->num_frames_parado, FPS_ANIMACAO);
             e->anim_atirando = animation_create(config->num_frames_atirando, FPS_ANIMACAO);
             e->anim_morrendo = animation_create(config->num_frames_morrendo, FPS_ANIMACAO);
             
             if (!e->anim_parado || !e->anim_atirando || !e->anim_morrendo) {
                 printf("ERRO: Falha ao criar animação do inimigo.\n");
-                e->ativo = false;
+                e->ativo = 0;
                 return;
             }
 
@@ -58,18 +60,17 @@ void enemy_spawn(Enemy inimigos[], int max_inimigos, const EnemyConfig *config, 
     }
 }
 
-void enemy_update(Enemy *e, struct Player *p, struct Bullet bullets[], int max_bullets) {
-    if (!e->ativo || !e->anim_atual) return; // Trava de segurança
+void enemy_update(struct Enemy *e, struct Player *p, struct Bullet bullets[], int max_bullets) {
+    
+    if (!e->ativo || !e->anim_atual) return;
 
-    // A lógica de animação agora é sempre chamada, o TAD cuida do resto
     animation_update(e->anim_atual);
 
-    // --- Máquina de Estados do Inimigo ---
     switch(e->estado) {
         case INIMIGO_MORRENDO:
             // Se a animação de morte terminou, desativa o inimigo
             if (e->anim_atual->frame_atual >= e->anim_atual->num_frames - 1) {
-                e->ativo = false;
+                e->ativo = 0;
             }
             break;
 
@@ -93,15 +94,23 @@ void enemy_update(Enemy *e, struct Player *p, struct Bullet bullets[], int max_b
             else {
                 float distancia = fabs(p->x - e->x);
                 if (distancia < LARGURA_TELA) {
-                    // --- NOVA LÓGICA DE ATAQUE BASEADA NO TIPO ---
                     switch(e->tipo) {
                         case SOLDADO_ESCUDO:
                             // Lógica do tiro único e rápido
                             for (int i = 0; i < max_bullets; i++) {
                                 if (!bullets[i].ativo) {
+                                    
                                     float start_x, start_y;
-                                    if(e->direcao == 1) start_x = e->x + (OFFSET_TIRO_INIMIGO_X * ESCALA);
-                                    else start_x = e->x + ((e->frame_largura - OFFSET_TIRO_INIMIGO_X) * ESCALA);
+                                    
+                                    if(e->direcao == 1) {
+                                        // Se o inimigo está virado para a direita, o tiro sai da direita
+                                        start_x = e->x + (OFFSET_TIRO_INIMIGO_X * ESCALA);
+                                    } 
+                                    else {
+                                        // Se o inimigo está virado para a esquerda, o tiro sai da esquerda
+                                        start_x = e->x + ((e->frame_largura - OFFSET_TIRO_INIMIGO_X) * ESCALA);
+                                    }
+
                                     start_y = e->y + (OFFSET_TIRO_INIMIGO_Y * ESCALA);
                                 
                                     // Dispara com a velocidade rápida
@@ -120,13 +129,24 @@ void enemy_update(Enemy *e, struct Player *p, struct Bullet bullets[], int max_b
                             int slots_livres[2];
                             int slots_encontrados = 0;
                             for (int i = 0; i < max_bullets && slots_encontrados < 2; i++) {
-                                if (!bullets[i].ativo) slots_livres[slots_encontrados++] = i;
+                                if (!bullets[i].ativo) {
+                                    slots_livres[slots_encontrados] = i;
+                                    slots_encontrados++;
+                                }
                             }
 
                             if (slots_encontrados == 2) {
+                                
                                 float start_x;
-                                if(e->direcao == 1) start_x = e->x + (OFFSET_TIRO_INIMIGO_X * ESCALA);
-                                else start_x = e->x + ((e->frame_largura - OFFSET_TIRO_INIMIGO_X) * ESCALA);
+                                
+                                if(e->direcao == 1) {
+                                    // Se o inimigo está virado para a direita, o tiro sai da direita
+                                    start_x = e->x + (OFFSET_TIRO_INIMIGO_X * ESCALA);
+                                } 
+                                else {
+                                    // Se o inimigo está virado para a esquerda, o tiro sai da esquerda
+                                    start_x = e->x + ((e->frame_largura - OFFSET_TIRO_INIMIGO_X) * ESCALA);
+                                }
 
                                 // Dispara dois projéteis com velocidade normal
                                 bullet_fire(&bullets[slots_livres[0]], start_x, e->y + (OFFSET_TIRO_DUPLO_Y1 * ESCALA), e->direcao, VELOCIDADE_PROJETIL, ENEMY);
@@ -146,12 +166,11 @@ void enemy_update(Enemy *e, struct Player *p, struct Bullet bullets[], int max_b
     }
 }
 
-// Desenha todos os inimigos ativos
-void enemy_draw(Enemy inimigos[], int max_inimigos, float camera_x, float camera_y) {
+void enemy_draw(struct Enemy inimigos[], int max_inimigos, float camera_x, float camera_y) {
     for (int i = 0; i < max_inimigos; i++) {
         if (inimigos[i].ativo) {
-            Enemy *e = &inimigos[i];
-            
+            struct Enemy *e = &inimigos[i];
+
             ALLEGRO_BITMAP *folha_atual = NULL;
             switch(e->estado) {
                 case INIMIGO_PARADO:   folha_atual = e->folha_sprite_parado;   break;
@@ -165,5 +184,13 @@ void enemy_draw(Enemy inimigos[], int max_inimigos, float camera_x, float camera
                 al_draw_scaled_bitmap(folha_atual, sx, 0, e->frame_largura, e->frame_altura, e->x - camera_x, e->y - camera_y, e->frame_largura * ESCALA, e->frame_altura * ESCALA, flags);
             }
         }
+    }
+}
+
+void enemy_destroy_animations(struct Enemy inimigos[], int max_inimigos) {
+    for (int i = 0; i < max_inimigos; i++) {
+        animation_destroy(inimigos[i].anim_parado);
+        animation_destroy(inimigos[i].anim_atirando);
+        animation_destroy(inimigos[i].anim_morrendo);
     }
 }

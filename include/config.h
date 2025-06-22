@@ -7,8 +7,6 @@ typedef enum { MENU, JOGANDO, FIM_DE_JOGO, SAIR } GameState;
 #define LARGURA_TELA 1000
 #define ALTURA_TELA 650
 #define LARGURA_MUNDO 1156 // Ou o tamanho do seu cenário
-#define LARGURA_CORACAO 50 // Largura desejada para o coração na tela
-#define ALTURA_CORACAO 50
 
 // --- ITENS ---
 #define MAX_ITENS 10
@@ -24,18 +22,10 @@ typedef enum { MENU, JOGANDO, FIM_DE_JOGO, SAIR } GameState;
 #define ESCALA 2.0f 
 #define ALTURA_JOGADOR_VISUAL (128 * ESCALA)
 #define FLOOR_Y ((ALTURA_TELA - ALTURA_JOGADOR_VISUAL) - 20)
-#define VELOCIDADE_JOGADOR 5.0
-#define FORCA_PULO -13.0
-#define GRAVIDADE 0.38
-#define FPS_ANIMACAO 10.0
-
-// --- JOGADOR - ANIMAÇÕES ---
-#define NUM_FRAMES_PARADO 7
-#define NUM_FRAMES_CORRENDO 12
-#define NUM_FRAMES_PULANDO 10
-#define NUM_FRAMES_ATIRANDO 4
-#define NUM_FRAMES_AGACHADO 1
-#define NUM_FRAMES_AGACHADO_ATIRANDO 4
+#define VELOCIDADE_JOGADOR 5.0f
+#define FORCA_PULO -13.0f
+#define GRAVIDADE 0.38f
+#define FPS_ANIMACAO 10.0f
 
 // --- JOGADOR - HITBOX ---
 #define HITBOX_NORMAL_LARGURA 10
@@ -65,9 +55,6 @@ typedef enum { MENU, JOGANDO, FIM_DE_JOGO, SAIR } GameState;
 
 // --- INIMIGOS ---
 #define MAX_INIMIGOS 7
-#define NUM_FRAMES_INIMIGO_SOLDADO 6
-#define NUM_FRAMES_INIMIGO_ATIRANDO 7
-#define NUM_FRAMES_INIMIGO_MORRENDO 6
 
 #define HITBOX_INIMIGO_LARGURA 10
 #define HITBOX_INIMIGO_ALTURA 70

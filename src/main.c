@@ -13,7 +13,7 @@
 
 // Struct para guardar os dados de spawn de um inimigo
 typedef struct {
-    EnemyType tipo;
+    enum EnemyType tipo;
     float x;
     float y;
 } EnemySpawnInfo;
@@ -58,9 +58,9 @@ int check_collision(float r1x, float r1y, float r1w, float r1h, float r2x, float
 }
 
 // A assinatura da função agora precisa de todos os ponteiros para os sprites e configs
-void resetar_jogo(struct Player *p, Enemy inimigos[], struct Bullet bullets[], struct Item itens[], Boss *chefe, float *camera_x, int *inimigos_derrotados, int *vitoria, 
-                const EnemyConfig *config_soldado_espingarda, const EnemyConfig *config_soldado_escudo, ALLEGRO_BITMAP *item_heart_sprite) {
-    
+void resetar_jogo(struct Player *p, struct Enemy inimigos[], struct Bullet bullets[], struct Item itens[], Boss *chefe, float *camera_x, int *inimigos_derrotados, int *vitoria, 
+                const struct EnemyConfig *config_soldado_espingarda, const struct EnemyConfig *config_soldado_escudo, ALLEGRO_BITMAP *item_heart_sprite) {
+
     printf("Resetando o jogo...\n");
 
     // 1. Reseta o estado do Jogador
@@ -89,7 +89,7 @@ void resetar_jogo(struct Player *p, Enemy inimigos[], struct Bullet bullets[], s
     enemy_destroy_animations(inimigos, MAX_INIMIGOS);
     enemy_init(inimigos, MAX_INIMIGOS);
     for (int i = 0; i < num_level1_spawns; i++) {
-        const EnemyConfig *config_atual = NULL;
+        const struct EnemyConfig *config_atual = NULL;
         if (level1_spawns[i].tipo == SOLDADO_ESPINGARDA) config_atual = config_soldado_espingarda;
         else if (level1_spawns[i].tipo == SOLDADO_ESCUDO) config_atual = config_soldado_escudo;
 
@@ -137,7 +137,7 @@ int main() {
     ALLEGRO_BITMAP *bullet_sprite = al_load_bitmap("assets/bullet.png");
 
     struct Player *jogador = player_create(100, FLOOR_Y);
-    Enemy inimigos[MAX_INIMIGOS];
+    struct Enemy inimigos[MAX_INIMIGOS];
 
     struct Item itens[MAX_ITENS];
     ALLEGRO_BITMAP *item_sprite = al_load_bitmap("assets/item.png");
@@ -167,14 +167,14 @@ int main() {
         return -1;
     }
 
-    EnemyConfig config_soldado_espingarda = {
+    struct EnemyConfig config_soldado_espingarda = {
         .tipo = SOLDADO_ESPINGARDA, .hp = 5,
         .num_frames_parado = 6, .num_frames_atirando = 7, .num_frames_morrendo = 5,
         .folha_sprite_parado = enemy1_sprite_idle,
         .folha_sprite_atirando = enemy1_sprite_shooting,
         .folha_sprite_morrendo = enemy1_sprite_death
     };
-    EnemyConfig config_soldado_escudo = {
+    struct EnemyConfig config_soldado_escudo = {
         .tipo = SOLDADO_ESCUDO, .hp = 8,
         .num_frames_parado = 6, .num_frames_atirando = 5, .num_frames_morrendo = 6,
         .folha_sprite_parado = enemy2_sprite_idle,
@@ -186,7 +186,7 @@ int main() {
     
     // --- SPAWN INICIAL ---
     for (int i = 0; i < num_level1_spawns; i++) {
-        const EnemyConfig *config_atual = NULL;
+        const struct EnemyConfig *config_atual = NULL;
         if (level1_spawns[i].tipo == SOLDADO_ESPINGARDA) {
             config_atual = &config_soldado_espingarda;
         } else {
@@ -493,20 +493,11 @@ int main() {
 
                         for (int i = 0; i < jogador->hp; i++) {
                             // Calcula a posição X de cada coração
-                            float x_pos = 10 + i * (LARGURA_CORACAO + padding);
+                            float x_pos = 10 + i * (50 + padding);
                             float y_pos = 10;
                             
                             // Desenha o sprite do coração no tamanho definido em config.h
-                            al_draw_scaled_bitmap(
-                                heart_sprite,
-                                0, 0, // Coordenadas de origem na imagem (começa do canto)
-                                al_get_bitmap_width(heart_sprite), // Largura original total da imagem
-                                al_get_bitmap_height(heart_sprite),// Altura original total da imagem
-                                x_pos, y_pos,                       // Posição de destino na tela
-                                LARGURA_CORACAO,                    // Largura final na tela
-                                ALTURA_CORACAO,                     // Altura final na tela
-                                0
-                            );
+                            al_draw_scaled_bitmap(heart_sprite, 0, 0, al_get_bitmap_width(heart_sprite), al_get_bitmap_height(heart_sprite), x_pos, y_pos, 50, 50, 0);
                         }
                     }
 
