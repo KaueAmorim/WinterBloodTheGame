@@ -1,5 +1,4 @@
 #include "controls.h"
-#include <stdlib.h>
 
 struct Controls* controls_create() {
 

@@ -5,6 +5,8 @@
 #include "animation.h"
 #include "player.h"
 #include "bullet.h"
+#include "config.h"
+#include <math.h>
 
 // Enum para os estados do chefe. 
 enum BossState{

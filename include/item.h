@@ -2,6 +2,7 @@
 #define ITEM_H
 
 #include <allegro5/allegro5.h>
+#include "config.h"
 
 enum ItemType {
     VODKA

@@ -5,6 +5,7 @@
 #include <math.h>
 #include "player.h"
 #include "animation.h"
+#include "config.h"
 
 // Enum para os diferentes tipos de inimigos no jogo.
 enum EnemyType {

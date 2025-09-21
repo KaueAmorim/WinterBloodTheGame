@@ -1,5 +1,4 @@
 #include "bullet.h"
-#include "config.h" 
 
 void bullet_fire(struct Bullet *b, float start_x, float start_y, int direction, float speed, enum BulletOwner owner) {
     b->x = start_x;

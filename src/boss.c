@@ -1,9 +1,4 @@
 #include "boss.h"
-#include "config.h"
-#include "player.h"
-#include "bullet.h"
-#include <stdio.h>
-#include <math.h>
 
 void boss_init(struct Boss *boss) {
     boss->x = 0;

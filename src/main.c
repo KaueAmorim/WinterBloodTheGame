@@ -3,7 +3,6 @@
 #include <allegro5/allegro_image.h>
 #include <allegro5/allegro_font.h>
 #include <allegro5/allegro_ttf.h>
-#include <allegro5/allegro_primitives.h>
 
 #include "boss.h"
 #include "config.h" 
@@ -60,8 +59,6 @@ int check_collision(float r1x, float r1y, float r1w, float r1h, float r2x, float
 void resetar_jogo(struct Player *p, struct Enemy inimigos[], struct Bullet bullets[], struct Item itens[], struct Boss *chefe, float *camera_x, int *inimigos_derrotados, int *vitoria, 
                 const struct EnemyConfig *config_soldado_espingarda, const struct EnemyConfig *config_soldado_escudo, ALLEGRO_BITMAP *item_heart_sprite) {
 
-    printf("Resetando o jogo...\n");
-
     // Reseta o estado do Jogador
     p->hp = 5;
     p->x = 100;
@@ -108,7 +105,7 @@ void resetar_jogo(struct Player *p, struct Enemy inimigos[], struct Bullet bulle
         }
     }
 
-    // 6. Garante que o Chefe está inativo
+    // Garante que o Chefe está inativo
     boss_destroy_animations(chefe);
     boss_init(chefe);
 }
@@ -121,7 +118,6 @@ int main() {
     al_install_mouse();
     al_init_font_addon();
     al_init_ttf_addon();
-    al_init_primitives_addon();
 
     ALLEGRO_DISPLAY *janela = al_create_display(LARGURA_TELA, ALTURA_TELA);
     ALLEGRO_EVENT_QUEUE *fila_eventos = al_create_event_queue();
@@ -217,7 +213,7 @@ int main() {
 
     // --- Variáveis de Estado do Jogo ---
     enum GameState estado_atual = MENU;
-    int opcao_menu_selecionada = -1; // 0 = Iniciar, 1 = Sair
+    int opcao_menu_selecionada = -1;     // 0 = Iniciar, 1 = Sair
     int opcao_gameover_selecionada = -1; // 0 = Tentar de Novo, 1 = Sair
     int vitoria = 0;
 
@@ -280,14 +276,9 @@ int main() {
                 }
 
                 if (evento.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN && evento.mouse.button == 1) {
-                    if (opcao_gameover_selecionada == 0) {
-                        resetar_jogo(jogador, inimigos, bullets, itens, &chefe, &camera_x, &inimigos_derrotados, &vitoria, &config_soldado_espingarda, &config_soldado_escudo, item_sprite);
-                        estado_atual = JOGANDO;
-                    } 
-                    else if (opcao_gameover_selecionada == 1) {
-                        resetar_jogo(jogador, inimigos, bullets, itens, &chefe, &camera_x, &inimigos_derrotados, &vitoria, &config_soldado_espingarda, &config_soldado_escudo, item_sprite);
-                        estado_atual = MENU;
-                    }
+                    resetar_jogo(jogador, inimigos, bullets, itens, &chefe, &camera_x, &inimigos_derrotados, &vitoria, &config_soldado_espingarda, &config_soldado_escudo, item_sprite);
+                    if (opcao_gameover_selecionada == 0) estado_atual = JOGANDO;
+                    else if (opcao_gameover_selecionada == 1) estado_atual = MENU;
                 }
 
                 if (evento.type == ALLEGRO_EVENT_KEY_DOWN) {
@@ -299,14 +290,9 @@ int main() {
                             opcao_gameover_selecionada = 1; 
                             break;
                         case ALLEGRO_KEY_ENTER:
-                            if (opcao_gameover_selecionada == 0) {
-                                resetar_jogo(jogador, inimigos, bullets, itens, &chefe, &camera_x, &inimigos_derrotados, &vitoria, &config_soldado_espingarda, &config_soldado_escudo, item_sprite);
-                                estado_atual = JOGANDO;
-                            } 
-                            else if (opcao_gameover_selecionada == 1) {
-                                resetar_jogo(jogador, inimigos, bullets, itens, &chefe, &camera_x, &inimigos_derrotados, &vitoria, &config_soldado_espingarda, &config_soldado_escudo, item_sprite);
-                                estado_atual = MENU;
-                            }
+                            resetar_jogo(jogador, inimigos, bullets, itens, &chefe, &camera_x, &inimigos_derrotados, &vitoria, &config_soldado_espingarda, &config_soldado_escudo, item_sprite);
+                            if (opcao_gameover_selecionada == 0) estado_atual = JOGANDO;
+                            else if (opcao_gameover_selecionada == 1) estado_atual = MENU;
                             break;
                     }
                 }
@@ -367,12 +353,12 @@ int main() {
                                 if (!inimigos[j].ativo) continue;
 
                                 // Hitbox do inimigo
-                                float enemy_x = inimigos[j].x + (HITBOX_INIMIGO_OFFSET_X * ESCALA);
-                                float enemy_y = inimigos[j].y + (HITBOX_INIMIGO_OFFSET_Y * ESCALA);
-                                float enemy_w = HITBOX_INIMIGO_LARGURA * ESCALA;
-                                float enemy_h = HITBOX_INIMIGO_ALTURA * ESCALA;
+                                float enemy_hitbox_x = inimigos[j].x + (HITBOX_INIMIGO_OFFSET_X * ESCALA);
+                                float enemy_hitbox_y = inimigos[j].y + (HITBOX_INIMIGO_OFFSET_Y * ESCALA);
+                                float enemy_hitbox_w = HITBOX_INIMIGO_LARGURA * ESCALA;
+                                float enemy_hitbox_h = HITBOX_INIMIGO_ALTURA * ESCALA;
 
-                                if (check_collision(bullets[i].x, bullets[i].y, LARGURA_BULLET, ALTURA_BULLET, enemy_x, enemy_y, enemy_w, enemy_h)) {
+                                if (check_collision(bullets[i].x, bullets[i].y, LARGURA_BULLET, ALTURA_BULLET, enemy_hitbox_x, enemy_hitbox_y, enemy_hitbox_w, enemy_hitbox_h)) {
                                     bullets[i].ativo = 0; 
                                     inimigos[j].hp--;
                                     
@@ -416,7 +402,7 @@ int main() {
                         }
                     }
 
-                    // --- Lógica de Colisão com Itens ---
+                    // --- Lógica de Colisão do Jogador com Itens ---
                     for (int i = 0; i < MAX_ITENS; i++) {
                         if (itens[i].ativo) {
 
@@ -424,7 +410,7 @@ int main() {
                             float item_hitbox_x = itens[i].x + HITBOX_ITEM_OFFSET_X;
                             float item_hitbox_y = itens[i].y + HITBOX_ITEM_OFFSET_Y;
 
-                            if (check_collision(player_hitbox_x, player_hitbox_y, player_hitbox_w, player_hitbox_h, item_hitbox_x, item_hitbox_y, HITBOX_ITEM_LARGURA, HITBOX_ITEM_ALTURA)) {
+                            if (check_collision(item_hitbox_x, item_hitbox_y, LARGURA_ITEM, ALTURA_ITEM, player_hitbox_x, player_hitbox_y, player_hitbox_w, player_hitbox_h)) {
                                 if (itens[i].tipo == VODKA) {
                                     jogador->hp += 3;
                                     itens[i].ativo = 0;
@@ -437,7 +423,7 @@ int main() {
                     if (chefe.ativo && jogador->hp > 0) {
 
                         // Se as hitboxes se tocarem, o jogador morre instantaneamente
-                        if (check_collision(player_hitbox_x, player_hitbox_y, jogador->hitbox_largura, jogador->hitbox_altura, boss_hitbox_x, boss_hitbox_y, chefe.hitbox_largura, chefe.hitbox_altura)) {
+                        if (check_collision(player_hitbox_x, player_hitbox_y, player_hitbox_w, player_hitbox_h, boss_hitbox_x, boss_hitbox_y, boss_hitbox_w, boss_hitbox_h)) {
                             jogador->hp = 0;
                             estado_atual = FIM_DE_JOGO;
                         }
@@ -447,10 +433,14 @@ int main() {
                         boss_spawn(&chefe, 5000, FLOOR_Y - 100, boss_sprite_move, boss_sprite_fire);
                     }
 
+                    // A Câmera Trava no Jogador
                     camera_x = jogador->x;
                     if (camera_x < 0) camera_x = 0;
 
+                    // Cálculo do Deslocamento ("Offset")
                     int offset_x = (int)camera_x % LARGURA_MUNDO;
+
+                    // Desenha o cenário em duas partes
                     al_draw_bitmap(cenario, -offset_x, 0, 0);
                     al_draw_bitmap(cenario, LARGURA_MUNDO - offset_x, 0, 0);
 
@@ -465,10 +455,8 @@ int main() {
                     }
 
                     // Desenha a vida do jogador
-                    if (heart_sprite) {
-                        for (int i = 0; i < jogador->hp; i++) {
-                            al_draw_scaled_bitmap(heart_sprite, 0, 0, al_get_bitmap_width(heart_sprite), al_get_bitmap_height(heart_sprite), 10 + i * 55, 10, 50, 50, 0);
-                        }
+                    for (int i = 0; i < jogador->hp; i++) {
+                        al_draw_scaled_bitmap(heart_sprite, 0, 0, al_get_bitmap_width(heart_sprite), al_get_bitmap_height(heart_sprite), 10 + i * 55, 10, 50, 50, 0);
                     }
 
                     break;

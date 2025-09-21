@@ -2,6 +2,7 @@
 #define BULLET_H
 
 #include <allegro5/allegro5.h>
+#include "config.h" 
 
 // Enum para identificar o "dono" do projétil.
 enum BulletOwner {

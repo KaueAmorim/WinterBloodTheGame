@@ -1,5 +1,4 @@
 #include "enemy.h"
-#include "config.h"
 
 void enemy_init(struct Enemy inimigos[], int max_inimigos) {
     for (int i = 0; i < max_inimigos; i++) {

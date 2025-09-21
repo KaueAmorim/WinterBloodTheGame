@@ -1,5 +1,4 @@
 #include "animation.h"
-#include <stdlib.h>
 
 struct Animation* animation_create(int num_frames, float fps) {
     
@@ -21,21 +20,19 @@ void animation_destroy(struct Animation *anim) {
     free(anim);
 }
 
-// Atualiza o frame baseado na passagem do tempo
 void animation_update(struct Animation *anim) {
     if (!anim) return;
 
-    anim->tempo_frame += 1.0 / 60.0; // Assumindo 60FPS no jogo
+    anim->tempo_frame += 1.0 / 60.0;
     if (anim->tempo_frame >= 1.0 / anim->fps) {
         anim->tempo_frame = 0;
         anim->frame_atual++;
         if (anim->frame_atual >= anim->num_frames) {
-            anim->frame_atual = 0; // Volta ao início
+            anim->frame_atual = 0;
         }
     }
 }
 
-// Reseta a animação para o começo
 void animation_reset(struct Animation *anim) {
     if (anim) {
         anim->frame_atual = 0;

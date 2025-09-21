@@ -1,6 +1,4 @@
 #include "item.h"
-#include "config.h"
-#include <stdio.h>
 
 void item_init(struct Item itens[], int max_itens) {
     for (int i = 0; i < max_itens; i++) {

@@ -33,7 +33,7 @@ enum GameState{
 #define NUM_FRAMES_AGACHADO 1
 #define NUM_FRAMES_AGACHADO_ATIRANDO 4
 
-// Hitbox do Jogador (Caixa de Colisão)
+// Hitbox do Jogador
 // Hitbox para os estados normais (em pé, correndo, pulando)
 #define HITBOX_NORMAL_LARGURA 10
 #define HITBOX_NORMAL_ALTURA 65
@@ -98,8 +98,8 @@ enum GameState{
 #define MAX_ITENS 10
 
 // Tamanho e Posição da HITBOX do item
-#define HITBOX_ITEM_LARGURA 60
-#define HITBOX_ITEM_ALTURA 48
+#define LARGURA_ITEM 60
+#define ALTURA_ITEM 48
 #define HITBOX_ITEM_OFFSET_X 8
 #define HITBOX_ITEM_OFFSET_Y 24
 
