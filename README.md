@@ -2,7 +2,7 @@
 
 ## 📋 Sobre o Projeto
 
-**Winter Blood** é um jogo 2D do gênero **Run & Gun** desenvolvido em **C puro** com Allegro, inspirado nos clássicos **Contra** (Konami, 1987) e **Metal Slug** (SNK, 1996). 
+**Winter's Blood** é um jogo 2D do gênero **Run & Gun** desenvolvido em **C puro** com Allegro, inspirado nos clássicos **Contra** (Konami, 1987) e **Metal Slug** (SNK, 1996). 
 
 Este projeto demonstra habilidades avançadas em programação de baixo nível, desenvolvimento de jogos e arquitetura de software, implementando mecânicas complexas de gameplay através de código otimizado e modular.
 
@@ -11,7 +11,8 @@ Este projeto demonstra habilidades avançadas em programação de baixo nível, 
 <div align="center">
 
 ### 🎮 Gameplay em Ação
-![Gameplay Principal](assets/screenshots/gameplay.png)
+![Gameplay Principal](assets/screenshots/gameplay1.png)
+![Gameplay Principal](assets/screenshots/gameplay2.png)
 *Personagem principal em combate contra inimigos*
 
 ### 🏠 Menu Principal
@@ -22,9 +23,12 @@ Este projeto demonstra habilidades avançadas em programação de baixo nível, 
 ![Boss Battle](assets/screenshots/boss_fight.png)
 *Enfrentamento épico contra o chefe da fase*
 
-### 🎯 HUD e Interface
-![Game HUD](assets/screenshots/hud.png)
-*Sistema de vida, pontuação e elementos de UI*
+### 💀 Tela de Derrota
+![Tela de Derrota](assets/screenshots/defeat.png)
+*Você caiu — tente novamente!*
+
+### 🥇 Tela de Vitória
+*A tela de vitória é segredo — descubra jogando!*
 
 </div>
 
@@ -66,7 +70,7 @@ Os jogos **Run & Gun** são um subgênero dos jogos de ação e tiro, caracteriz
 - [x] **Dano Visual** - Indicadores claros de impacto e status
 
 ### 🌍 Ambiente de Jogo
-- [x] **Cenários Dinâmicos** - Background parallax com movimento fluido
+- [x] **Cenários Dinâmicos** - Rolling Background com movimento fluido
 - [x] **Level Design** - Fase balanceada com progressão natural
 - [x] **Assets Customizados** - Arte original e sprites otimizados
 
@@ -103,25 +107,15 @@ WinterBloodTheGame/
 └── README.md            # Documentação completa
 ```
 
-## 🎮 Controles
-
-| Ação | Tecla | Descrição |
-|------|-------|-----------|
-| **Movimento** | `←→↑↓` | Movimentação em 8 direções |
-| **Pular** | `SPACE` | Pulo com física realista |
-| **Atirar** | `X` | Disparo de projéteis |
-| **Agachar** | `S` | Posição defensiva |
-| **Menu** | `ESC` | Pausar/voltar ao menu |
-
 ## 📦 Compilação e Execução
 
 ### Pré-requisitos (Allegro)
 ```bash
 # Ubuntu/Debian
-sudo apt-get install liballegro5-dev
+sudo apt-get install liballegro-ttf5-dev
 
 # Fedora/CentOS
-sudo dnf install allegro5-devel
+sudo dnf install allegro5*
 
 # Arch Linux
 sudo pacman -S allegro
